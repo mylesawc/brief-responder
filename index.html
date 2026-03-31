@@ -1355,7 +1355,19 @@ async function exportToMonday() {
 
     // ═══════════════════════════════════════════════════════
     // 2. 2026 Pubity Group Campaign Overview (key info)
+    //    — Check for duplicates first
     // ═══════════════════════════════════════════════════════
+    const dupCheck = await mondayFetch(`{ boards(ids: ${MONDAY_OVERVIEW_BOARD_ID}) { items_page(limit: 50, query_params: { rules: [{ column_id: "name", compare_value: [${JSON.stringify(itemName)}] }] }) { items { id name } } } }`);
+    const existingItems = dupCheck?.data?.boards?.[0]?.items_page?.items || [];
+    if (existingItems.some(i => i.name === itemName)) {
+      btn.innerHTML = 'Already in Monday';
+      btn.style.background = '#d97706';
+      btn.style.color = '#fff';
+      btn.style.borderColor = '#d97706';
+      setTimeout(() => { btn.innerHTML = originalText; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; btn.disabled = false; _mondayExporting = false; }, 2500);
+      return;
+    }
+
     const overviewValues = {};
 
     const sellerUserId = SELLER_USER_IDS[manualData.salesLead];
