@@ -1,0 +1,2011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brief Analyzer — Pubity Group</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --purple: #FFEB00; --purple-dark: #d7c300; --purple-light: #fffde6; --purple-border: #ffe066;
+    --green: #10b981; --green-light: #ecfdf5; --green-border: #a7f3d0;
+    --amber: #d97706; --amber-bg: #fffbeb; --amber-border: #fde68a;
+    --red: #dc2626; --red-bg: #fef2f2; --red-border: #fecaca;
+    --blue: #3b82f6; --blue-light: #eff6ff; --blue-border: #bfdbfe;
+    --g50: #f8fafc; --g100: #f3f4f6; --g200: #e5e7eb; --g300: #d1d5db;
+    --g400: #9ca3af; --g500: #6b7280; --g600: #4b5563; --g700: #374151; --g900: #111827;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--g50); color: var(--g900); min-height: 100vh; }
+
+  .header { background: #222222; border-bottom: 1px solid #3B3B3B; padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo { height: 28px; display: flex; align-items: center; justify-content: center; }
+  .logo img { height: 24px; width: auto; object-fit: contain; }
+  .header-title { font-size: 17px; font-weight: 700; color: #fff; }
+  .header-sub { font-size: 12px; color: #9ca3af; margin-top: 1px; }
+  .header-actions { display: flex; gap: 8px; }
+
+  .btn { padding: 8px 16px; font-size: 12px; font-weight: 600; border-radius: 7px; cursor: pointer; border: none; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: #FFEB00; color: #222222; font-weight: 700; }
+  .btn-primary:hover { background: #d7c300; color: #222222; }
+  .btn-outline { background: #fff; color: var(--g700); border: 1px solid var(--g300); }
+  .btn-outline:hover { background: var(--g100); }
+  .btn-ghost { background: transparent; color: #222222; border: 1px solid #ffe066; }
+  .btn-ghost:hover { background: #fffde6; }
+  .btn-large { width: 100%; padding: 12px 24px; font-size: 14px; font-weight: 600; border-radius: 10px; margin-top: 14px; }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+
+  .container { max-width: 1040px; margin: 0 auto; padding: 28px 24px; }
+
+  /* API Key screen */
+  .key-screen { max-width: 480px; margin: 60px auto; text-align: center; }
+  .key-screen h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .key-screen p { font-size: 13px; color: var(--g500); margin-bottom: 24px; line-height: 1.6; }
+  .key-input-wrap { position: relative; }
+  .key-input { width: 100%; padding: 12px 16px; border: 1px solid var(--g200); border-radius: 10px; font-size: 13px; font-family: monospace; background: #fff; }
+  .key-input:focus { outline: none; border-color: #FFEB00; }
+  .key-note { font-size: 11px; color: var(--g400); margin-top: 10px; }
+  .key-remember { display: flex; align-items: center; gap: 8px; justify-content: center; margin-top: 12px; font-size: 12px; color: var(--g500); }
+  .key-remember input { accent-color: #FFEB00; }
+
+  /* Upload */
+  .upload-hero { text-align: center; margin-bottom: 28px; }
+  .upload-hero h2 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+  .upload-hero p { color: var(--g500); font-size: 14px; }
+  .dropzone { border: 2px dashed var(--g300); border-radius: 14px; padding: 48px 28px; text-align: center; cursor: pointer; background: #fafafa; transition: all 0.2s ease; }
+  .dropzone:hover, .dropzone.dragging { border-color: #FFEB00; background: #fffde6; }
+  .dropzone-icon { font-size: 42px; margin-bottom: 10px; }
+  .dropzone-title { font-weight: 600; font-size: 15px; }
+  .dropzone-sub { font-size: 13px; color: var(--g500); margin-top: 4px; }
+  .dropzone-formats { display: inline-flex; gap: 6px; margin-top: 12px; }
+  .format-badge { padding: 3px 10px; font-size: 11px; font-weight: 600; background: #fff; border: 1px solid var(--g200); border-radius: 20px; color: var(--g500); }
+  .divider { display: flex; align-items: center; gap: 14px; margin: 22px 0; color: var(--g400); font-size: 12px; font-weight: 500; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--g200); }
+  .paste-area { width: 100%; border: 1px solid var(--g200); border-radius: 12px; padding: 16px 18px; font-size: 13px; font-family: inherit; resize: vertical; background: #fff; min-height: 180px; }
+  .paste-area:focus { outline: none; border-color: #FFEB00; }
+  .error-box { margin-top: 12px; padding: 11px 15px; background: var(--red-bg); border: 1px solid var(--red-border); border-radius: 8px; color: var(--red); font-size: 13px; }
+
+  /* Processing */
+  .processing { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; text-align: center; }
+  .spinner { width: 44px; height: 44px; border: 3px solid var(--g200); border-top-color: #FFEB00; border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .processing-title { font-weight: 700; font-size: 16px; color: var(--g700); }
+  .processing-sub { font-size: 13px; color: var(--g500); margin-top: 6px; max-width: 300px; }
+  .processing-step { font-size: 12px; color: #d7c300; margin-top: 12px; font-weight: 500; }
+
+  /* Completion bar */
+  .completion-bar { margin-bottom: 22px; }
+  .completion-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+  .completion-label { font-size: 13px; font-weight: 600; color: var(--g700); }
+  .completion-value { font-size: 13px; font-weight: 700; }
+  .completion-track { background: var(--g100); border-radius: 999px; height: 8px; overflow: hidden; }
+  .completion-fill { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
+
+  /* Section headers */
+  .section-header { display: flex; align-items: center; gap: 10px; margin: 28px 0 14px; }
+  .section-header h3 { font-size: 15px; font-weight: 700; }
+  .badge { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 20px; }
+  .badge-green { background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+  .badge-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+  .badge-blue { background: var(--blue-light); color: var(--blue); border: 1px solid var(--blue-border); }
+
+  /* Confidence */
+  .confidence { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; padding: 1px 8px; border-radius: 20px; margin-left: 6px; }
+  .conf-high { background: var(--green-light); color: var(--green); }
+  .conf-medium { background: var(--amber-bg); color: var(--amber); }
+  .conf-inferred { background: var(--blue-light); color: var(--blue); }
+
+  /* Fields */
+  .fields-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field-card { background: #fff; border: 1px solid var(--g200); border-radius: 10px; padding: 14px 16px; transition: box-shadow 0.15s; position: relative; }
+  .field-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+  .field-card.wide { grid-column: 1 / -1; }
+  .field-card.detected { border-left: 3px solid var(--green); }
+  .field-card.inferred { border-left: 3px solid var(--blue); }
+  .field-card.missing { border-left: 3px solid var(--amber); }
+  .field-label { display: flex; align-items: center; gap: 4px; font-weight: 600; font-size: 13px; color: var(--g700); margin-bottom: 4px; flex-wrap: wrap; }
+  .field-hint { font-size: 11px; color: var(--g400); margin-bottom: 6px; }
+  .field-source { font-size: 10px; color: var(--g400); margin-top: 5px; font-style: italic; }
+  .field-input, .field-textarea { width: 100%; border: 1px solid var(--g200); border-radius: 7px; padding: 8px 11px; font-size: 13px; font-family: inherit; }
+  .field-input:focus, .field-textarea:focus { outline: none; border-color: #FFEB00; background: #fff; }
+  .field-textarea { resize: vertical; min-height: 70px; }
+  .field-input.empty, .field-textarea.empty { background: var(--amber-bg); }
+  .field-input.filled, .field-textarea.filled { background: var(--g50); }
+
+  /* Manual Fields */
+  .manual-section { margin-bottom: 22px; }
+  .manual-section-title { font-size: 13px; font-weight: 700; color: var(--g700); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .manual-section-title .badge { font-size: 10px; }
+  .field-select { width: 100%; border: 1px solid var(--g200); border-radius: 7px; padding: 8px 11px; font-size: 13px; font-family: inherit; background: #fff; color: var(--g900); cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239ca3af' d='M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  .field-select:focus { outline: none; border-color: #FFEB00; }
+  .brief-type-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .brief-type-pill { padding: 5px 14px; font-size: 12px; font-weight: 600; border-radius: 20px; border: 1px solid var(--g200); background: #fff; color: var(--g600); cursor: pointer; transition: all 0.15s; }
+  .brief-type-pill:hover { border-color: #ffe066; }
+  .brief-type-pill.active { background: #FFEB00; color: #222222; border-color: #FFEB00; }
+
+  /* Thought Starters */
+  .ideas-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 10px; }
+  .idea-card { background: #fff; border: 1px solid var(--g200); border-radius: 12px; padding: 18px 20px; transition: box-shadow 0.15s; }
+  .idea-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+  .idea-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .idea-title { font-weight: 700; font-size: 15px; color: var(--g900); }
+  .idea-type { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 10px; border-radius: 20px; background: #fffde6; color: #222222; border: 1px solid #ffe066; white-space: nowrap; }
+  .idea-concept { font-size: 14px; color: var(--g800, #1f2937); line-height: 1.6; margin-bottom: 10px; }
+  .idea-execution { font-size: 12px; color: var(--g500); line-height: 1.5; padding-top: 10px; border-top: 1px solid var(--g200); }
+  .idea-copy { background: var(--g100); border: none; border-radius: 5px; padding: 4px 10px; font-size: 10px; cursor: pointer; color: var(--g500); opacity: 0; transition: opacity 0.15s; float: right; }
+  .idea-card:hover .idea-copy { opacity: 1; }
+
+  /* Questions */
+  .question-card { background: #fff; border: 1px solid var(--g200); border-radius: 10px; padding: 16px 18px; margin-bottom: 10px; position: relative; }
+  .question-card.critical { border-left: 3px solid var(--red); }
+  .question-card.important { border-left: 3px solid var(--amber); }
+  .question-card.helpful { border-left: 3px solid var(--blue); }
+  .question-priority { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+  .priority-critical { color: var(--red); }
+  .priority-important { color: var(--amber); }
+  .priority-helpful { color: var(--blue); }
+  .question-text { font-size: 14px; font-weight: 600; color: var(--g900); margin-bottom: 4px; }
+  .question-context { font-size: 12px; color: var(--g500); line-height: 1.5; }
+  .question-copy { position: absolute; top: 12px; right: 12px; background: var(--g100); border: none; border-radius: 5px; padding: 4px 8px; font-size: 10px; cursor: pointer; color: var(--g500); opacity: 0; transition: opacity 0.15s; }
+  .question-card:hover .question-copy { opacity: 1; }
+
+  /* Summary */
+  .summary-card { margin-top: 24px; background: linear-gradient(135deg, #fffde6, #fff9c4); border: 1px solid #ffe066; border-radius: 14px; padding: 20px 22px; }
+  .summary-title { font-size: 14px; font-weight: 700; color: #222222; margin-bottom: 10px; }
+  .summary-text { font-size: 13px; color: var(--g600); line-height: 1.7; }
+  .summary-tag { display: inline-block; background: #fff; border: 1px solid #ffe066; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; color: #222222; margin: 2px 3px; }
+
+  /* Tabs */
+  .tab-bar { display: flex; gap: 0; border-bottom: 2px solid var(--g200); margin-bottom: 20px; }
+  .tab { padding: 10px 20px; font-size: 13px; font-weight: 600; color: var(--g500); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+  .tab:hover { color: var(--g700); }
+  .tab.active { color: #222222; border-bottom-color: #FFEB00; }
+  .tab-count { font-size: 11px; background: var(--g100); padding: 1px 7px; border-radius: 10px; margin-left: 6px; }
+  .tab.active .tab-count { background: #fffde6; color: #222222; }
+
+  .toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .raw-text-box { background: #fff; border: 1px solid var(--g200); border-radius: 10px; padding: 16px; margin-bottom: 16px; max-height: 280px; overflow: auto; font-size: 12px; color: var(--g700); line-height: 1.7; white-space: pre-wrap; }
+
+  /* History */
+  .history-section { margin-top: 32px; }
+  .history-section h3 { font-size: 15px; font-weight: 700; color: var(--g700); margin-bottom: 12px; }
+  .history-empty { text-align: center; padding: 30px; color: var(--g400); font-size: 13px; }
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .history-item { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1px solid var(--g200); border-radius: 10px; padding: 12px 16px; cursor: pointer; transition: all 0.15s; }
+  .history-item:hover { border-color: #ffe066; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+  .history-info { flex: 1; min-width: 0; }
+  .history-brand { font-weight: 700; font-size: 14px; color: var(--g900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .history-meta { font-size: 11px; color: var(--g500); margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .history-actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; margin-left: 12px; }
+  .history-delete { background: none; border: none; color: var(--g400); cursor: pointer; font-size: 14px; padding: 4px 6px; border-radius: 4px; transition: all 0.15s; }
+  .history-delete:hover { color: var(--red); background: var(--red-bg); }
+  .history-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 12px; background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); }
+
+  /* Previous Briefs */
+  .brand-group { margin-bottom: 16px; }
+  .brand-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: #fff; border: 1px solid var(--g200); border-radius: 10px; cursor: pointer; transition: all 0.15s; }
+  .brand-header:hover { border-color: #ffe066; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+  .brand-header.expanded { border-radius: 10px 10px 0 0; border-bottom: none; background: #fffde6; border-color: #ffe066; }
+  .brand-name { font-weight: 700; font-size: 15px; color: var(--g900); }
+  .brand-count { font-size: 12px; color: var(--g500); background: var(--g100); padding: 2px 10px; border-radius: 12px; }
+  .brand-header.expanded .brand-count { background: #FFEB00; color: #222; }
+  .brand-expand { border: 1px solid #ffe066; border-top: none; border-radius: 0 0 10px 10px; overflow: hidden; }
+  .brand-briefs { }
+  .brand-brief-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: #fff; border-bottom: 1px solid var(--g100); cursor: pointer; transition: background 0.1s; }
+  .brand-brief-item:last-child { border-bottom: none; }
+  .brand-brief-item:hover { background: var(--g50); }
+  .brand-brief-campaign { font-weight: 600; font-size: 13px; color: var(--g900); }
+  .brand-brief-meta { font-size: 11px; color: var(--g500); margin-top: 2px; display: flex; gap: 10px; }
+  .brand-brief-seller { font-size: 11px; color: var(--g500); background: var(--g100); padding: 2px 8px; border-radius: 10px; }
+  .brand-search { width: 100%; padding: 10px 14px; border: 1px solid var(--g200); border-radius: 10px; font-size: 13px; font-family: inherit; margin-bottom: 16px; }
+  .brand-search:focus { outline: none; border-color: #FFEB00; }
+  .prev-empty { text-align: center; padding: 40px; color: var(--g400); font-size: 13px; }
+  .brand-intel { padding: 16px 18px; background: linear-gradient(135deg, #fffde6, #fff9c4); border-bottom: 1px solid #ffe066; min-height: 60px; }
+  .brand-intel-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #222; margin-bottom: 10px; }
+  .brand-intel-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .brand-intel-tag { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 14px; background: #fff; border: 1px solid #ffe066; color: #222; }
+  .brand-intel-stat { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--g600); margin-right: 16px; margin-bottom: 4px; }
+  .brand-intel-stat strong { color: var(--g900); }
+  .brand-intel-insight { font-size: 13px; color: var(--g700); line-height: 1.6; margin-top: 8px; }
+
+  @media (max-width: 700px) {
+    .fields-grid { grid-template-columns: 1fr; }
+    .field-card.wide { grid-column: 1; }
+    .header { padding: 12px 16px; }
+    .container { padding: 18px 14px; }
+    .pages-grid { grid-template-columns: 1fr; }
+  }
+  @media print {
+    .header-actions, .toolbar, .btn, .tab-bar { display: none !important; }
+    body { background: #fff; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo"><img src="https://framerusercontent.com/images/XXDKLuMsddarkzSi0AGzpc12J0.svg" alt="Pubity"></div>
+    <div>
+      <div class="header-title">Brief Analyzer</div>
+      <div class="header-sub">Pubity Group — Partnerships · v3.1</div>
+    </div>
+  </div>
+  <div class="header-actions" id="headerActions" style="display:none;">
+    <button class="btn btn-ghost" onclick="copyAll()" style="color:#fff; border-color:#ffe066;">Copy All</button>
+    <button class="btn btn-primary" onclick="exportPDF()" style="padding:10px 20px; font-size:13px;">Export to PDF</button>
+    <button class="btn btn-outline" onclick="resetAll()" style="color:#222222; border-color:#d1d5db; background:#fff;">New Brief</button>
+    <button class="btn" id="mondayBtn" onclick="exportToMonday()" style="padding:10px 22px; font-size:13px; font-weight:700; gap:8px; background:#fff; color:#222; border:2px solid #ff3d57; border-radius:8px;"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M8.4 46.8c-3.1 0-5.7-1.6-7.2-4.2-1.5-2.6-1.5-5.8 0-8.4L12.6 14c1.5-2.6 4.1-4.2 7.2-4.2 3.1 0 5.7 1.6 7.2 4.2 1.5 2.6 1.5 5.8 0 8.4L15.6 42.6c-1.5 2.6-4.1 4.2-7.2 4.2z" fill="#ff3d57"/><path d="M24.8 54.2c-3.1 0-5.7-1.6-7.2-4.2-1.5-2.6-1.5-5.8 0-8.4l11.4-19.8c1.5-2.6 4.1-4.2 7.2-4.2 3.1 0 5.7 1.6 7.2 4.2 1.5 2.6 1.5 5.8 0 8.4L32 50c-1.5 2.6-4.1 4.2-7.2 4.2z" fill="#ffcb00"/><path d="M41.2 46.8c-3.1 0-5.7-1.6-7.2-4.2-1.5-2.6-1.5-5.8 0-8.4L45.4 14c1.5-2.6 4.1-4.2 7.2-4.2 3.1 0 5.7 1.6 7.2 4.2 1.5 2.6 1.5 5.8 0 8.4L48.4 42.6c-1.5 2.6-4.1 4.2-7.2 4.2z" fill="#00d647"/></svg>Export to Monday</button>
+  </div>
+  <div class="header-actions" id="headerSettings">
+    <button class="btn btn-outline" onclick="showKeySettings()" title="API key settings" style="font-size:14px; padding:6px 10px; color:#fff; border-color:#3B3B3B;">&#9881;</button>
+  </div>
+</div>
+
+<div class="container">
+  <!-- API KEY SCREEN -->
+  <div id="keyState">
+    <div class="key-screen">
+      <div style="font-size:42px;margin-bottom:16px;">🔑</div>
+      <h2>Connect your tools</h2>
+      <p>This dashboard uses Claude to analyze briefs and can push results straight to Monday.com. Keys stay in your browser and are never sent anywhere except their respective APIs.</p>
+      <div style="text-align:left;margin-bottom:18px;">
+        <label style="font-size:12px;font-weight:600;color:var(--g700);display:block;margin-bottom:5px;">Anthropic API Key <span style="color:var(--red);">*</span></label>
+        <input type="password" class="key-input" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off">
+        <div class="key-note" style="margin-top:6px;">Get a key from <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#d7c300;">console.anthropic.com</a></div>
+      </div>
+      <div style="text-align:left;margin-bottom:14px;">
+        <label style="font-size:12px;font-weight:600;color:var(--g700);display:block;margin-bottom:5px;">Monday.com API Token <span style="font-weight:400;color:var(--g400);">(optional)</span></label>
+        <input type="password" class="key-input" id="mondayKeyInput" placeholder="eyJhbGciOi..." autocomplete="off">
+        <div class="key-note" style="margin-top:6px;">Get your token from <a href="https://monday.com/developers" target="_blank" style="color:#d7c300;">monday.com/developers</a> → API Token</div>
+      </div>
+      <div style="text-align:left;margin-bottom:14px;">
+        <label style="font-size:12px;font-weight:600;color:var(--g700);display:block;margin-bottom:5px;">Monday Proxy URL <span style="font-weight:400;color:var(--g400);">(required for Export to Monday)</span></label>
+        <input type="text" class="key-input" id="mondayProxyInput" placeholder="https://monday-proxy.your-name.workers.dev" autocomplete="off">
+        <div class="key-note" style="margin-top:6px;">Your Cloudflare Worker URL — see the <code>monday-proxy-worker.js</code> file for setup instructions</div>
+      </div>
+      <label class="key-remember">
+        <input type="checkbox" id="rememberKey" checked> Remember keys in this browser
+      </label>
+      <button class="btn btn-primary btn-large" onclick="saveKey()">Continue</button>
+      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--g200);">
+        <button class="btn btn-outline btn-large" onclick="generateTeamFile()" style="margin-top:0;">Generate team-ready file</button>
+        <div class="key-note" style="margin-top:8px;">Creates a downloadable version with keys baked in — share it with your team and they'll never see this screen.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPLOAD SCREEN -->
+  <div id="uploadState" style="display:none;">
+    <div class="tab-bar" id="uploadTabBar">
+      <div class="tab active" data-tab="newBrief" onclick="switchUploadTab('newBrief')">New Brief</div>
+      <div class="tab" data-tab="previousBriefs" onclick="switchUploadTab('previousBriefs')">Previous Briefs <span class="tab-count" id="prevBriefCount">0</span></div>
+    </div>
+    <div id="uploadTab-newBrief">
+      <div class="upload-hero">
+        <h2>Upload a brand brief</h2>
+        <p>Drop a file or paste the brief — Claude will read it and break down everything you need</p>
+      </div>
+      <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault(); this.classList.add('dragging')" ondragleave="this.classList.remove('dragging')" ondrop="handleDrop(event)">
+        <input type="file" id="fileInput" accept=".docx,.txt,.md,.csv,.pdf" style="display:none" onchange="handleFileSelect(event)">
+        <div class="dropzone-icon">📄</div>
+        <div class="dropzone-title">Drop your brief here</div>
+        <div class="dropzone-sub">or click to browse</div>
+        <div class="dropzone-formats">
+          <span class="format-badge">.docx</span>
+          <span class="format-badge">.pdf</span>
+          <span class="format-badge">.txt</span>
+        </div>
+      </div>
+      <div id="errorBox" class="error-box" style="display:none;"></div>
+      <div class="divider">or paste the brief</div>
+      <textarea class="paste-area" id="pasteArea" placeholder="Paste the full brief text here..."></textarea>
+      <button class="btn btn-primary btn-large" id="analyzeBtn" onclick="analyzePaste()">Analyze Brief</button>
+    </div>
+    <div id="uploadTab-previousBriefs" style="display:none;">
+      <div id="previousBriefsContainer"></div>
+    </div>
+  </div>
+
+  <!-- PROCESSING SCREEN -->
+  <div id="processingState" style="display:none;">
+    <div class="processing">
+      <div class="spinner"></div>
+      <div class="processing-title">Analyzing your brief...</div>
+      <div class="processing-sub">Claude is reading through the brief and extracting everything</div>
+      <div class="processing-step" id="processingStep">Sending to Claude...</div>
+    </div>
+  </div>
+
+  <!-- RESULTS SCREEN -->
+  <div id="resultsState" style="display:none;">
+    <div class="completion-bar" id="completionBar"></div>
+    <div class="toolbar">
+      <button class="btn btn-ghost" id="rawToggle" onclick="toggleRaw()">Show raw text</button>
+      <span style="flex:1;"></span>
+      <span style="font-size:12px; color:var(--g400);" id="fileName"></span>
+    </div>
+    <div class="raw-text-box" id="rawTextBox" style="display:none;"></div>
+    <div class="tab-bar" id="tabBar">
+      <div class="tab active" data-tab="analysis" onclick="switchTab('analysis')">Analysis</div>
+      <div class="tab" data-tab="pages" onclick="switchTab('pages')">Thought Starters <span class="tab-count" id="ideasCount">0</span></div>
+      <div class="tab" data-tab="questions" onclick="switchTab('questions')">Questions to Ask <span class="tab-count" id="questionCount">0</span></div>
+    </div>
+    <div id="tab-analysis">
+      <div class="manual-section">
+        <div class="manual-section-title">Your Details <span class="badge badge-amber">Manual</span></div>
+        <div class="fields-grid">
+          <div class="field-card">
+            <div class="field-label">Sales Lead</div>
+            <select class="field-select" id="manualSalesLead" onchange="updateManual()">
+              <option value="">Select seller...</option>
+              <option value="Alexander Kaars Sijpesteijn">Alexander Kaars Sijpesteijn</option>
+              <option value="Allie Greenwald">Allie Greenwald</option>
+              <option value="Breezy">Breezy</option>
+              <option value="Dustin Thaler">Dustin Thaler</option>
+              <option value="Kit Chilvers">Kit Chilvers</option>
+              <option value="Myles Chilvers">Myles Chilvers</option>
+              <option value="Nina Kammer">Nina Kammer</option>
+              <option value="Seb Rossi">Seb Rossi</option>
+              <option value="Unassigned">Unassigned</option>
+            </select>
+          </div>
+          <div class="field-card">
+            <div class="field-label">Brief Name</div>
+            <div class="field-hint">Used as the item name on Monday</div>
+            <input class="field-input filled" id="manualBriefName" placeholder="e.g. NIKE_SUMMER25_UK" oninput="updateManual()">
+          </div>
+          <div class="field-card">
+            <div class="field-label">Proactive or Inbound?</div>
+            <select class="field-select" id="manualProactiveInbound" onchange="updateManual()">
+              <option value="">Select...</option>
+              <option value="Inbound">Inbound</option>
+              <option value="Proactive">Proactive</option>
+            </select>
+          </div>
+          <div class="field-card">
+            <div class="field-label">Brief Source</div>
+            <select class="field-select" id="manualBriefSource" onchange="updateManual()">
+              <option value="">Select...</option>
+              <option value="Agency">Agency</option>
+              <option value="Client Direct">Client Direct</option>
+            </select>
+          </div>
+          <div class="field-card">
+            <div class="field-label">Type of Campaign</div>
+            <select class="field-select" id="manualCampaignType" onchange="updateManual()">
+              <option value="">Select...</option>
+              <option value="Amplification">Amplification</option>
+              <option value="Integrated Editorial">Integrated Editorial</option>
+              <option value="Bespoke">Bespoke</option>
+              <option value="Hybrid or Whatever works best">Hybrid</option>
+            </select>
+          </div>
+          <div class="field-card wide">
+            <div class="field-label">Brief Type <span class="confidence conf-high" id="briefTypeBadge" style="display:none;">Auto-detected</span></div>
+            <div class="field-hint">Auto-selected by Claude based on the brief — click to change</div>
+            <div class="brief-type-pills" id="briefTypePills"></div>
+          </div>
+          <div class="field-card wide">
+            <div class="field-label">Additional Context</div>
+            <div class="field-hint">Anything else relevant that's not in the brief</div>
+            <textarea class="field-textarea filled" id="manualAdditionalContext" rows="2" placeholder="e.g. Client is open to bold creative, previously loved the Memezar campaign..." oninput="updateManual()"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="manual-section-title" style="margin-top:24px;">Extracted from Brief <span class="badge badge-green">AI</span></div>
+      <div class="fields-grid" id="fieldsGrid"></div>
+      <div class="summary-card" id="summaryCard"></div>
+    </div>
+    <div id="tab-pages" style="display:none;"></div>
+    <div id="tab-questions" style="display:none;"></div>
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ─── Config ─────────────────────────────────────────────
+
+const FIELDS = [
+  { key: "brandName", label: "Brand Name", type: "text", wide: false },
+  { key: "campaignName", label: "Campaign Name", type: "text", wide: false },
+  { key: "businessChallenge", label: "Business Challenge", type: "textarea", wide: true, hint: "What do they want to achieve from partnering with us?" },
+  { key: "marketingObjective", label: "Marketing Objective", type: "textarea", wide: true },
+  { key: "widerCampaign", label: "Part of a Wider Campaign?", type: "textarea", wide: true, hint: "Is this part of a broader campaign?" },
+  { key: "targetAudience", label: "Target Audience", type: "textarea", wide: true },
+  { key: "deliverables", label: "Deliverables", type: "textarea", wide: true, hint: "What content or formats are they asking for?" },
+  { key: "kpis", label: "KPIs / Success Metrics", type: "textarea", wide: true, hint: "How will they measure success?" },
+  { key: "dealValue", label: "Deal Value", type: "text", wide: false },
+  { key: "flightDates", label: "Campaign Flight Dates", type: "text", wide: false },
+  { key: "keyDates", label: "Key Dates to Be Aware Of", type: "textarea", wide: true },
+  { key: "goodLooksLike", label: "What Does Good Look Like?", type: "textarea", wide: true, hint: "What does the client consider a win?" },
+  { key: "whatWillWin", label: "What Will Win Us This One?", type: "textarea", wide: true, hint: "Our edge — what should we lean into?" },
+];
+
+
+// ─── Embedded keys (set when generating team file) ──────
+const EMBEDDED_KEY = "";
+const EMBEDDED_MONDAY_KEY = "";
+const EMBEDDED_MONDAY_PROXY = "";
+
+let apiKey = "";
+let mondayKey = "";
+let mondayProxy = "";
+let data = {};
+let fieldMeta = {};
+let rawText = "";
+let currentFileName = "";
+let analysisResult = null;
+
+const MONDAY_BOARD_ID = 1828053644; // Campaign Briefing Springboard
+const MONDAY_OVERVIEW_BOARD_ID = 5089619640; // 2026 Pubity Group Campaign Overview
+
+// Seller name → Monday.com user ID mapping
+const SELLER_USER_IDS = {
+  'Alexander Kaars Sijpesteijn': 70328233,
+  'Allie Greenwald': 78169942,
+  'Breezy': 52483125,
+  'Dustin Thaler': 98054632,
+  'Kit Chilvers': 39887257,
+  'Myles Chilvers': 39887253,
+  'Nina Kammer': 97253929,
+  'Seb Rossi': 39887251
+};
+
+
+// ─── API Key ────────────────────────────────────────────
+
+function init() {
+  // Load Monday key — embedded takes priority, then localStorage
+  if (EMBEDDED_MONDAY_KEY) {
+    mondayKey = atob(EMBEDDED_MONDAY_KEY);
+  } else {
+    mondayKey = localStorage.getItem('ba_monday_key') || sessionStorage.getItem('ba_monday_key') || '';
+  }
+  // Load Monday proxy URL — embedded takes priority, then localStorage
+  if (EMBEDDED_MONDAY_PROXY) {
+    mondayProxy = atob(EMBEDDED_MONDAY_PROXY);
+  } else {
+    mondayProxy = localStorage.getItem('ba_monday_proxy') || '';
+  }
+  // Load Anthropic key — embedded takes priority, then localStorage
+  if (EMBEDDED_KEY) {
+    apiKey = atob(EMBEDDED_KEY);
+    showState('upload');
+    return;
+  }
+  const saved = localStorage.getItem('ba_key') || sessionStorage.getItem('ba_key');
+  if (saved) {
+    apiKey = saved;
+    showState('upload');
+  } else {
+    showState('key');
+  }
+}
+
+function saveKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (!val || !val.startsWith('sk-')) {
+    alert('Please enter a valid Anthropic API key (starts with sk-)');
+    return;
+  }
+  apiKey = val;
+  const mondayVal = document.getElementById('mondayKeyInput').value.trim();
+  const proxyVal = document.getElementById('mondayProxyInput').value.trim();
+  if (mondayVal) mondayKey = mondayVal;
+  if (proxyVal) mondayProxy = proxyVal;
+  if (document.getElementById('rememberKey').checked) {
+    localStorage.setItem('ba_key', val);
+    if (mondayVal) localStorage.setItem('ba_monday_key', mondayVal);
+    if (proxyVal) localStorage.setItem('ba_monday_proxy', proxyVal);
+  }
+  sessionStorage.setItem('ba_key', val);
+  if (mondayVal) sessionStorage.setItem('ba_monday_key', mondayVal);
+  showState('upload');
+}
+
+function generateTeamFile() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (!val || !val.startsWith('sk-')) {
+    alert('Enter your API key above first — that key will be embedded into the team file.');
+    return;
+  }
+  const mondayVal = document.getElementById('mondayKeyInput').value.trim() || mondayKey || '';
+  const proxyVal = document.getElementById('mondayProxyInput').value.trim() || mondayProxy || '';
+  // Encode keys as base64 so they're not in plain text
+  const encoded = btoa(val);
+  // Get the current page HTML and inject all keys
+  let teamHtml = document.documentElement.outerHTML;
+  teamHtml = teamHtml.replace(
+    'const EMBEDDED_KEY = "";',
+    'const EMBEDDED_KEY = "' + encoded + '";'
+  );
+  if (mondayVal) {
+    const encodedMonday = btoa(mondayVal);
+    teamHtml = teamHtml.replace(
+      'const EMBEDDED_MONDAY_KEY = "";',
+      'const EMBEDDED_MONDAY_KEY = "' + encodedMonday + '";'
+    );
+  }
+  if (proxyVal) {
+    const encodedProxy = btoa(proxyVal);
+    teamHtml = teamHtml.replace(
+      'const EMBEDDED_MONDAY_PROXY = "";',
+      'const EMBEDDED_MONDAY_PROXY = "' + encodedProxy + '";'
+    );
+  }
+  // Download it
+  const blob = new Blob(['<!DOCTYPE html>\n<html lang="en">' + teamHtml.slice(teamHtml.indexOf('<head'))], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'brief-analyzer-pubity.html';
+  a.click();
+  URL.revokeObjectURL(url);
+  alert('Done! Share "brief-analyzer-pubity.html" with your team. Both API keys are baked in — no setup needed.');
+}
+
+// ─── File Handling ──────────────────────────────────────
+
+function handleDrop(e) {
+  e.preventDefault();
+  e.target.closest('.dropzone')?.classList.remove('dragging');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+
+async function processFile(file) {
+  showState('processing');
+  updateStep('Reading file...');
+  currentFileName = file.name;
+  clearError();
+  const ext = file.name.split('.').pop().toLowerCase();
+  try {
+    let text = '';
+    if (['txt','md','csv'].includes(ext)) { text = await file.text(); }
+    else if (ext === 'docx') { text = (await mammoth.extractRawText({ arrayBuffer: await file.arrayBuffer() })).value; }
+    else if (ext === 'pdf') { text = await extractPdfText(file); }
+    else { showError(`Unsupported: .${ext}. Use .docx, .pdf, or .txt`); showState('upload'); return; }
+    if (!text.trim()) { showError('File appears empty.'); showState('upload'); return; }
+    rawText = text;
+    updateStep('Sending to Claude...');
+    await analyzeWithClaude(text);
+  } catch (err) {
+    showError('Error: ' + err.message);
+    showState('upload');
+  }
+}
+
+async function extractPdfText(file) {
+  const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  let t = '';
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const p = await pdf.getPage(i);
+    const c = await p.getTextContent();
+    t += c.items.map(x => x.str).join(' ') + '\n\n';
+  }
+  return t;
+}
+
+function analyzePaste() {
+  const text = document.getElementById('pasteArea').value.trim();
+  if (!text) return;
+  rawText = text;
+  currentFileName = 'Pasted text';
+  showState('processing');
+  updateStep('Sending to Claude...');
+  analyzeWithClaude(text);
+}
+
+// ─── Claude API ─────────────────────────────────────────
+
+async function analyzeWithClaude(text) {
+  const systemPrompt = `You are a brief analysis assistant for Pubity Group, one of the world's largest social media entertainment companies with 170M+ followers across Instagram and TikTok.
+
+Your job is to read a brand/agency brief and extract structured information from it. You must read the ENTIRE brief carefully and pull out every relevant detail, even if the brief doesn't use the exact field names below. Interpret the brief intelligently — agencies structure briefs in wildly different ways.
+
+About Pubity Group — who we are & how we think creatively:
+Pubity Group is one of the world's largest social media entertainment companies with 170M+ followers across Instagram and TikTok. Our pages include Pubity (35M+), Memezar (28M+), Will Smith Fan Page (8M+), Pubity Sport (5M+), Pubity Gaming (3M+), and massive TikTok channels. Our audience is Gen Z and young millennials (16-30). We don't just post content — we create social-first activations that become the conversation.
+
+WHAT WE MEAN BY "SOCIAL-FIRST ACTIVATIONS" — this is the level of thinking we need:
+These are not just posts. They're campaign-level ideas built for social that have real creative ambition, cultural relevance, and viral potential. Think custom concepts that a brand would greenlight and get excited about in a pitch deck.
+
+REAL EXAMPLES OF WHAT PUBITY HAS DONE — use these as your benchmark:
+- Fortnite x Homer Simpson in Santa Monica: A life-size Homer Simpson was placed on Santa Monica beach to promote the Fortnite collab. Pubity captured and distributed the content natively — it blew up because it was a real-world stunt designed to be shared on social. The content felt like a "no way this is real" moment.
+- Movie launch takeovers: For major releases (Paramount, Universal, Sony), Pubity runs multi-post rollouts — teaser memes days before, a launch-day Reel using trending audio, comment-section activations where the studio account drops in, and follow-up engagement posts. It's a coordinated social event, not a one-off post.
+- Gaming launch countdowns: For titles like Call of Duty or Fortnite updates, Pubity runs countdown content, "which one are you picking?" polls, nostalgia throwbacks to older titles, and day-one reaction Reels — all native, all engagement-first.
+- Brand x Meme mashups: Taking an iconic meme format and rebuilding it around the brand's message so seamlessly that people share it without realising it's sponsored. The brand IS the joke, not slapped onto it.
+- Comment-section hijacks: Pubity posts a high-engagement meme and the brand drops a perfectly timed, funny comment underneath — gets thousands of likes and feels completely organic. Sometimes the comment becomes bigger than the post itself.
+
+THE CREATIVE SPECTRUM — ideas should range across these levels:
+1. Content activations: Custom meme series, branded Reel concepts, carousel stories, comment-section plays — native content built for the feed.
+2. Social-first stunts: IRL moments designed to be captured and distributed on social (like the Homer Simpson example). Doesn't need to be expensive — just shareable and unexpected.
+3. Community moments: Polls, "which side are you on" debates, user-generated challenges, interactive Stories — things that make the audience feel part of it.
+4. Cultural hijacks: Jumping on a trending moment, audio, or meme format with a brand twist that feels timely and relevant — the kind of post that only works if you move fast.
+
+WHAT DOES NOT WORK:
+- Anything that reads like an ad brief turned into a social post
+- Generic "check out this product" energy
+- Ideas that could come from any publisher — they need to feel distinctly Pubity
+- Overly complex ideas that need a paragraph to explain — if you can't pitch it in one sentence, it's too complicated
+
+Return a JSON object with this exact structure (no markdown, just raw JSON):
+{
+  "fields": {
+    "brandName": { "value": "string or empty", "confidence": "high|medium|inferred", "source": "brief explanation of where/how you found this" },
+    "campaignName": { "value": "", "confidence": "", "source": "" },
+    "businessChallenge": { "value": "", "confidence": "", "source": "" },
+    "marketingObjective": { "value": "", "confidence": "", "source": "" },
+    "widerCampaign": { "value": "", "confidence": "", "source": "" },
+    "targetAudience": { "value": "", "confidence": "", "source": "" },
+    "deliverables": { "value": "", "confidence": "", "source": "" },
+    "kpis": { "value": "", "confidence": "", "source": "" },
+    "dealValue": { "value": "", "confidence": "", "source": "" },
+    "flightDates": { "value": "", "confidence": "", "source": "" },
+    "keyDates": { "value": "", "confidence": "", "source": "" },
+    "goodLooksLike": { "value": "", "confidence": "", "source": "" },
+    "whatWillWin": { "value": "", "confidence": "", "source": "" }
+  },
+  "thoughtStarters": [
+    {
+      "title": "Bold campaign-level idea name (max 6 words)",
+      "type": "Content Activation|Social-First Stunt|Community Moment|Cultural Hijack",
+      "concept": "1-2 sentence pitch — what it is, what the audience sees, why it bangs. Write it like you're pitching Myles in a meeting.",
+      "execution": "1 sentence on how it actually comes to life across Pubity's channels (which formats, what sequence, any IRL element)"
+    }
+  ],
+  "questions": [
+    { "priority": "critical|important|helpful", "question": "the question", "context": "why this matters for the pitch" }
+  ],
+  "briefTypes": ["Awareness", "Cultural-Clout"],
+  "summary": "A 2-3 sentence summary of the brief and what the brand is looking for"
+}
+
+Brief Type guidance:
+- briefTypes: Select ALL that apply from this exact list: "Awareness", "Cultural-Clout", "Perception", "Consideration", "Conversion", "Visibility"
+- A brief can match multiple types. Pick every type that genuinely fits based on the objectives, KPIs, and what the brand is trying to achieve.
+- Awareness = reach, impressions, eyeballs, brand recognition
+- Cultural-Clout = cool factor, cultural relevance, being part of the conversation, social credibility
+- Perception = changing how people see the brand, repositioning, brand lift
+- Consideration = getting people to think about buying/trying, moving them down funnel
+- Conversion = direct action — clicks, sign-ups, downloads, purchases
+- Visibility = being seen in the right places, sponsorship-style presence
+
+Thought Starters guidance:
+- Generate 3-5 thought starters. Quality over quantity — each one should feel like a genuine campaign idea Myles could pitch to a brand, not filler.
+- These are SOCIAL-FIRST ACTIVATIONS, not just "posts." Think at the level of the Homer Simpson stunt, movie takeovers, or comment-section hijacks. Big ideas with viral potential that happen to live on social.
+- Keep descriptions tight and punchy. These are topline write-ups — enough to get the idea across and excite a client, not a full creative brief. If it takes more than 2 sentences to explain, simplify it.
+- Vary the ideas across the creative spectrum: at least one content activation, and try to include a stunt or community moment where relevant. Don't give 5 versions of "make a meme about it."
+- Every idea must be specific to THIS brief — reference the brand, the product, the audience, or the campaign goal directly. Generic ideas that could apply to any brand are worthless.
+- The brand integration should feel native and clever. The brand should be central to why the idea works, not bolted on at the end.
+- Think about what would make this blow up: is it a "no way" moment? A debate? A nostalgia hit? An IRL spectacle? A perfectly timed cultural reference?
+- Each idea should make Myles think "I want to pitch this tomorrow" — if it doesn't have that energy, cut it.
+
+Field guidance:
+- brandName: The brand or client. Could be mentioned as "client", "brand", "advertiser", or just be obvious from context.
+- campaignName: The campaign or project name. Sometimes it's in a header or subject line.
+- businessChallenge: What problem they're trying to solve by partnering with us. Read between the lines if needed.
+- marketingObjective: The specific marketing goal (awareness, consideration, conversion, etc.)
+- widerCampaign: Is this part of a bigger campaign? Are other media/channels involved?
+- targetAudience: Who they want to reach. Look for age ranges, demographics, interests, personas.
+- deliverables: What content/formats they want. (static posts, Reels, Stories, TikTok, etc.)
+- kpis: How they'll measure success. (reach, engagement, clicks, views, brand lift, etc.)
+- dealValue: The budget. Look for currency amounts, CPMs, flat fees, ranges.
+- flightDates: When the campaign runs. Start/end dates, duration.
+- keyDates: Important milestones — launch dates, approval deadlines, embargoes, premieres.
+- goodLooksLike: What the client considers a successful outcome. If not explicit, infer from their KPIs and objectives.
+- whatWillWin: YOUR strategic recommendation on what Pubity should lean into to win this deal. Consider our scale, native content style, audience fit, speed, track record. Be specific.
+
+Confidence levels:
+- "high" = explicitly stated in the brief
+- "medium" = strongly implied or found in a different section than expected
+- "inferred" = you're reading between the lines or making a smart assumption
+
+For questions:
+- "critical" = missing info that blocks us from building a solid proposal
+- "important" = info that would significantly improve our pitch
+- "helpful" = nice-to-know context that gives us an edge
+
+Generate smart, specific questions — not generic ones. Reference what IS in the brief to make them contextual. Frame them as if Myles (the sales lead) would ask them on a call or in an email. Keep the tone conversational, not corporate.
+
+If a field genuinely has no answer and can't be inferred, set value to "" and explain in source.`;
+
+  try {
+    const maxRetries = 3;
+    let response;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [{
+            role: 'user',
+            content: `Here is the brand brief to analyze:\n\n---\n\n${text}\n\n---\n\nAnalyze this brief and return the JSON object as specified. Be thorough — extract everything you can.`
+          }]
+        })
+      });
+
+      if (response.ok) break;
+      if (response.status === 529 || response.status === 503 || response.status === 500) {
+        if (attempt < maxRetries) {
+          updateStep(`API busy — retrying (${attempt}/${maxRetries})...`);
+          await new Promise(r => setTimeout(r, 2000 * attempt));
+          continue;
+        }
+      }
+      // Non-retryable error or final attempt
+      const err = await response.json().catch(() => ({}));
+      if (response.status === 401) {
+        localStorage.removeItem('ba_key');
+        sessionStorage.removeItem('ba_key');
+        throw new Error('Invalid API key. Please re-enter your key.');
+      }
+      throw new Error(err.error?.message || `API error (${response.status})`);
+    }
+
+    updateStep('Processing response...');
+    const result = await response.json();
+    const content = result.content[0].text;
+
+    // Parse JSON from response (handle potential markdown wrapping)
+    let parsed;
+    try {
+      const jsonStr = content.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+      parsed = JSON.parse(jsonStr);
+    } catch (e) {
+      // Try extracting JSON from the response
+      const match = content.match(/\{[\s\S]*\}/);
+      if (match) parsed = JSON.parse(match[0]);
+      else throw new Error('Failed to parse Claude response');
+    }
+
+    analysisResult = parsed;
+    processAnalysis(parsed);
+    renderResults();
+    saveToHistory();
+    showState('results');
+
+  } catch (err) {
+    showError(err.message);
+    showState('upload');
+  }
+}
+
+function processAnalysis(result) {
+  data = {};
+  fieldMeta = {};
+
+  // Map fields
+  for (const [key, info] of Object.entries(result.fields || {})) {
+    if (info.value && info.value.trim()) {
+      data[key] = info.value;
+      fieldMeta[key] = { confidence: info.confidence || 'medium', source: info.source || '' };
+    }
+  }
+}
+
+// ─── Rendering ──────────────────────────────────────────
+
+// Manual field state
+let manualData = { salesLead: '', briefName: '', proactiveInbound: '', briefSource: '', campaignType: '', briefTypes: [], additionalContext: '' };
+let currentHistoryId = null; // Tracks the current brief's history entry for auto-save
+
+const BRIEF_TYPE_OPTIONS = ['Awareness', 'Cultural-Clout', 'Perception', 'Consideration', 'Conversion', 'Visibility'];
+
+function renderResults() {
+  document.getElementById('headerActions').style.display = 'flex';
+  document.getElementById('fileName').textContent = currentFileName;
+  document.getElementById('questionCount').textContent = (analysisResult?.questions || []).length;
+  renderBriefTypePills();
+  renderCompletion();
+  renderFields();
+  renderSummary();
+  renderThoughtStarters();
+  renderQuestions();
+  // Auto-fill brief name from extracted data
+  const briefNameInput = document.getElementById('manualBriefName');
+  if (briefNameInput && !briefNameInput.value && data.brandName) {
+    const brand = data.brandName.toUpperCase().replace(/\s+/g, '-');
+    const campaign = (data.campaignName || 'BRIEF').toUpperCase().replace(/\s+/g, '-');
+    briefNameInput.value = `${brand}_${campaign}`;
+    manualData.briefName = briefNameInput.value;
+  }
+}
+
+function renderBriefTypePills() {
+  const container = document.getElementById('briefTypePills');
+  const badge = document.getElementById('briefTypeBadge');
+  // Set auto-detected types from Claude
+  const detected = analysisResult?.briefTypes || [];
+  if (detected.length > 0 && manualData.briefTypes.length === 0) {
+    manualData.briefTypes = [...detected];
+    if (badge) badge.style.display = 'inline-flex';
+  }
+
+  container.innerHTML = BRIEF_TYPE_OPTIONS.map(t => {
+    const active = manualData.briefTypes.includes(t) ? 'active' : '';
+    return `<button class="brief-type-pill ${active}" onclick="toggleBriefType('${t}')">${t}</button>`;
+  }).join('');
+}
+
+function toggleBriefType(type) {
+  const idx = manualData.briefTypes.indexOf(type);
+  if (idx !== -1) manualData.briefTypes.splice(idx, 1);
+  else manualData.briefTypes.push(type);
+  renderBriefTypePills();
+  autoSaveToHistory();
+}
+
+function updateManual() {
+  manualData.salesLead = document.getElementById('manualSalesLead').value;
+  manualData.briefName = document.getElementById('manualBriefName').value;
+  manualData.proactiveInbound = document.getElementById('manualProactiveInbound').value;
+  manualData.briefSource = document.getElementById('manualBriefSource').value;
+  manualData.campaignType = document.getElementById('manualCampaignType').value;
+  manualData.additionalContext = document.getElementById('manualAdditionalContext').value;
+  // Auto-save to history
+  autoSaveToHistory();
+}
+
+function autoSaveToHistory() {
+  if (!currentHistoryId) return;
+  try {
+    const history = getHistory();
+    const idx = history.findIndex(h => h.id === currentHistoryId);
+    if (idx === -1) return;
+    history[idx].manualData = JSON.parse(JSON.stringify(manualData));
+    // Also update campaign name if brief name changed
+    if (manualData.briefName) history[idx].campaignName = manualData.briefName;
+    localStorage.setItem('ba_history', JSON.stringify(history));
+  } catch(e) { console.warn('Auto-save failed:', e); }
+}
+
+function renderCompletion() {
+  const total = FIELDS.length;
+  const high = FIELDS.filter(f => fieldMeta[f.key]?.confidence === 'high').length;
+  const med = FIELDS.filter(f => fieldMeta[f.key]?.confidence === 'medium').length;
+  const inf = FIELDS.filter(f => fieldMeta[f.key]?.confidence === 'inferred').length;
+  const missing = total - high - med - inf;
+  const pct = Math.round(((high + med + inf * 0.6) / total) * 100);
+  const color = pct >= 75 ? 'var(--green)' : pct >= 45 ? '#FFEB00' : 'var(--amber)';
+
+  document.getElementById('completionBar').innerHTML = `
+    <div class="completion-header">
+      <span class="completion-label">Brief Completeness</span>
+      <span class="completion-value" style="color:${color}">
+        ${high + med} detected · ${inf} inferred · ${missing} missing — ${pct}%
+      </span>
+    </div>
+    <div class="completion-track">
+      <div class="completion-fill" style="width:${pct}%;background:${color};"></div>
+    </div>
+  `;
+}
+
+function renderFields() {
+  document.getElementById('fieldsGrid').innerHTML = FIELDS.map(f => {
+    const val = data[f.key] || '';
+    const meta = fieldMeta[f.key];
+    const isEmpty = !val.trim();
+
+    let statusClass = 'missing';
+    let confBadge = '';
+    if (meta) {
+      if (meta.confidence === 'high') { statusClass = 'detected'; confBadge = '<span class="confidence conf-high">Detected</span>'; }
+      else if (meta.confidence === 'medium') { statusClass = 'detected'; confBadge = '<span class="confidence conf-medium">Likely</span>'; }
+      else if (meta.confidence === 'inferred') { statusClass = 'inferred'; confBadge = '<span class="confidence conf-inferred">Inferred</span>'; }
+    }
+
+    const hint = f.hint ? `<div class="field-hint">${f.hint}</div>` : '';
+    const source = meta?.source ? `<div class="field-source">${esc(meta.source)}</div>` : '';
+    const cls = isEmpty ? 'empty' : 'filled';
+
+    const input = f.type === 'textarea'
+      ? `<textarea class="field-textarea ${cls}" data-key="${f.key}" oninput="updateField('${f.key}', this.value)" rows="3">${esc(val)}</textarea>`
+      : `<input class="field-input ${cls}" data-key="${f.key}" value="${escA(val)}" oninput="updateField('${f.key}', this.value)">`;
+
+    return `
+      <div class="field-card ${f.wide ? 'wide' : ''} ${statusClass}">
+        <div class="field-label">${f.label} ${confBadge}</div>
+        ${hint}
+        ${input}
+        ${source}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderSummary() {
+  const summary = analysisResult?.summary || '';
+  const parts = [];
+  if (data.brandName) parts.push(`<strong>${esc(data.brandName)}</strong>`);
+  if (data.campaignName) parts.push(`"${esc(data.campaignName)}"`);
+  if (data.dealValue) parts.push(`<span class="summary-tag">${esc(data.dealValue)}</span>`);
+  if (data.flightDates) parts.push(`<span class="summary-tag">${esc(data.flightDates)}</span>`);
+
+  const ideasCount = (analysisResult?.thoughtStarters || []).length;
+  let ideasHtml = '';
+  if (ideasCount > 0) {
+    ideasHtml = `<br><span style="font-size:12px;color:var(--g400);margin-top:4px;display:inline-block;">${ideasCount} content ideas generated — see Thought Starters tab</span>`;
+  }
+
+  document.getElementById('summaryCard').innerHTML = `
+    <div class="summary-title">Quick Take</div>
+    <div class="summary-text">${summary ? esc(summary) : parts.join(' — ')}${ideasHtml}</div>
+  `;
+}
+
+function renderThoughtStarters() {
+  const ideas = analysisResult?.thoughtStarters || [];
+  const container = document.getElementById('tab-pages');
+  document.getElementById('ideasCount').textContent = ideas.length;
+
+  if (ideas.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--g400);">No thought starters generated for this brief.</div>';
+    return;
+  }
+
+  let html = '<p style="font-size:13px;color:var(--g500);margin-bottom:14px;">Social-first activations tailored to this brief — big ideas built for Pubity\'s channels.</p>';
+  html += '<div class="ideas-grid">';
+  html += ideas.map((idea, i) => `
+    <div class="idea-card">
+      <button class="idea-copy" onclick="event.stopPropagation(); cpIdea(this, ${i})">Copy</button>
+      <div class="idea-header">
+        <span class="idea-title">${esc(idea.title)}</span>
+        <span class="idea-type">${esc(idea.type || '')}</span>
+      </div>
+      <div class="idea-concept">${esc(idea.concept)}</div>
+      ${idea.execution ? `<div class="idea-execution">${esc(idea.execution)}</div>` : ''}
+    </div>
+  `).join('');
+  html += '</div>';
+  html += `<button class="btn btn-ghost" style="margin-top:16px;" onclick="copyAllIdeas()">Copy all ideas</button>`;
+  container.innerHTML = html;
+}
+
+function cpIdea(btn, index) {
+  const idea = (analysisResult?.thoughtStarters || [])[index];
+  if (!idea) return;
+  const text = `${idea.title} [${idea.type || ''}]\n${idea.concept}\nExecution: ${idea.execution || ''}`;
+  navigator.clipboard.writeText(text);
+  btn.textContent = 'Copied'; setTimeout(() => btn.textContent = 'Copy', 1200);
+}
+
+function copyAllIdeas() {
+  const ideas = analysisResult?.thoughtStarters || [];
+  const text = ideas.map((idea, i) => `${i + 1}. ${idea.title} [${idea.type || ''}]\n${idea.concept}\nExecution: ${idea.execution || ''}`).join('\n\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('[onclick="copyAllIdeas()"]');
+    btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy all ideas', 1500);
+  });
+}
+
+
+function renderQuestions() {
+  const qs = analysisResult?.questions || [];
+  const container = document.getElementById('tab-questions');
+
+  if (qs.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--g400);">No gaps detected — this brief is thorough.</div>';
+    return;
+  }
+
+  const critical = qs.filter(q => q.priority === 'critical');
+  const important = qs.filter(q => q.priority === 'important');
+  const helpful = qs.filter(q => q.priority === 'helpful');
+
+  let html = '<p style="font-size:13px;color:var(--g500);margin-bottom:16px;">Questions to ask on a call or send back to the agency — prioritised by impact on your pitch.</p>';
+
+  if (critical.length > 0) {
+    html += `<div class="section-header"><h3>Must Ask</h3><span class="badge badge-red">${critical.length}</span></div>`;
+    html += critical.map(qCard).join('');
+  }
+  if (important.length > 0) {
+    html += `<div class="section-header"><h3>Should Ask</h3><span class="badge badge-amber">${important.length}</span></div>`;
+    html += important.map(qCard).join('');
+  }
+  if (helpful.length > 0) {
+    html += `<div class="section-header"><h3>Nice to Know</h3><span class="badge badge-blue">${helpful.length}</span></div>`;
+    html += helpful.map(qCard).join('');
+  }
+
+  html += `<button class="btn btn-ghost" style="margin-top:16px;" onclick="copyQuestions()">Copy all questions</button>`;
+  container.innerHTML = html;
+}
+
+function qCard(q) {
+  const cls = q.priority === 'critical' ? 'critical' : q.priority === 'important' ? 'important' : 'helpful';
+  const pcls = 'priority-' + cls;
+  return `
+    <div class="question-card ${cls}">
+      <div class="question-priority ${pcls}">${q.priority}</div>
+      <div class="question-text">${esc(q.question)}</div>
+      <div class="question-context">${esc(q.context)}</div>
+      <button class="question-copy" onclick="event.stopPropagation(); cpQ(this, \`${escA(q.question)}\`)">Copy</button>
+    </div>
+  `;
+}
+
+function cpQ(btn, text) {
+  navigator.clipboard.writeText(text);
+  btn.textContent = 'Copied'; setTimeout(() => btn.textContent = 'Copy', 1200);
+}
+
+// ─── Tab Switching ──────────────────────────────────────
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  ['analysis','pages','questions'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+}
+
+// ─── Actions ────────────────────────────────────────────
+
+function toggleRaw() {
+  const box = document.getElementById('rawTextBox');
+  const btn = document.getElementById('rawToggle');
+  if (box.style.display === 'none') { box.style.display = 'block'; box.textContent = rawText; btn.textContent = 'Hide raw text'; }
+  else { box.style.display = 'none'; btn.textContent = 'Show raw text'; }
+}
+
+function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const ml = 18; // margin left
+  const mr = 18; // margin right
+  const maxW = pw - ml - mr;
+  let y = 20;
+
+  const brand = data.brandName || 'Brief';
+  const campaign = data.campaignName || '';
+
+  // Colours
+  const yellow = [255, 235, 0];
+  const dark = [34, 34, 34];
+  const grey = [107, 114, 128];
+  const lightGrey = [229, 231, 235];
+  const green = [16, 185, 129];
+  const red = [220, 38, 38];
+  const amber = [217, 119, 6];
+  const blue = [59, 130, 246];
+
+  function checkPage(need) {
+    if (y + need > ph - 20) { doc.addPage(); y = 20; }
+  }
+
+  function drawSectionHeader(title) {
+    checkPage(14);
+    doc.setFillColor(...dark);
+    doc.rect(ml, y, maxW, 8, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.text(title.toUpperCase(), ml + 4, y + 5.5);
+    y += 12;
+    doc.setTextColor(...dark);
+  }
+
+  function drawField(label, value, conf) {
+    if (!value) return;
+    checkPage(18);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...grey);
+    let labelText = label.toUpperCase();
+    if (conf) labelText += conf === 'high' ? '  [DETECTED]' : conf === 'inferred' ? '  [INFERRED]' : '  [LIKELY]';
+    doc.text(labelText, ml, y);
+    y += 4;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...dark);
+    const lines = doc.splitTextToSize(String(value), maxW);
+    for (const line of lines) {
+      checkPage(5);
+      doc.text(line, ml, y);
+      y += 4.5;
+    }
+    y += 3;
+  }
+
+  // ─── HEADER ───
+  doc.setFillColor(...dark);
+  doc.rect(0, 0, pw, 28, 'F');
+  doc.setFillColor(...yellow);
+  doc.rect(ml, 8, 40, 12, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(...dark);
+  doc.text('PUBITY GROUP', ml + 3, 16);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(255, 255, 255);
+  doc.text('Brief Analysis', ml + 44, 16);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(180, 180, 180);
+  doc.text(new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }), pw - mr, 16, { align: 'right' });
+  y = 36;
+
+  // ─── TITLE ───
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(...dark);
+  doc.text(brand, ml, y);
+  if (campaign) {
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    doc.setTextColor(...grey);
+    doc.text(campaign, ml, y);
+  }
+  y += 6;
+
+  // Summary line
+  const summary = analysisResult?.summary || '';
+  if (summary) {
+    y += 4;
+    doc.setDrawColor(...lightGrey);
+    doc.line(ml, y, pw - mr, y);
+    y += 6;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(...grey);
+    const sumLines = doc.splitTextToSize(summary, maxW);
+    for (const line of sumLines) {
+      checkPage(5);
+      doc.text(line, ml, y);
+      y += 4;
+    }
+    y += 4;
+  }
+
+  // ─── YOUR DETAILS (manual fields) ───
+  const hasMD = manualData.salesLead || manualData.proactiveInbound || manualData.campaignType || manualData.briefTypes.length > 0 || manualData.additionalContext;
+  if (hasMD) {
+    drawSectionHeader('Your Details');
+    drawField('Sales Lead', manualData.salesLead);
+    drawField('Brief Name', manualData.briefName);
+    drawField('Proactive or Inbound', manualData.proactiveInbound);
+    drawField('Brief Source', manualData.briefSource);
+    drawField('Type of Campaign', manualData.campaignType);
+    if (manualData.briefTypes.length > 0) drawField('Brief Type', manualData.briefTypes.join(', '));
+    drawField('Additional Context', manualData.additionalContext);
+  }
+
+  // ─── EXTRACTED FIELDS ───
+  drawSectionHeader('Extracted from Brief');
+  for (const f of FIELDS) {
+    const val = data[f.key] || '';
+    const conf = fieldMeta[f.key]?.confidence || '';
+    drawField(f.label, val, conf);
+  }
+
+  // ─── THOUGHT STARTERS ───
+  const ideas = analysisResult?.thoughtStarters || [];
+  if (ideas.length > 0) {
+    drawSectionHeader('Thought Starters (' + ideas.length + ')');
+    ideas.forEach((idea, i) => {
+      checkPage(28);
+      // Idea number + title
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(...dark);
+      doc.text((i + 1) + '. ' + (idea.title || ''), ml, y);
+      // Type badge
+      if (idea.type) {
+        const titleW = doc.getTextWidth((i + 1) + '. ' + (idea.title || ''));
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        const badgeX = ml + titleW + 4;
+        const badgeW = doc.getTextWidth(idea.type.toUpperCase()) + 6;
+        doc.setFillColor(...yellow);
+        doc.roundedRect(badgeX, y - 3.5, badgeW, 5, 1.5, 1.5, 'F');
+        doc.setTextColor(...dark);
+        doc.text(idea.type.toUpperCase(), badgeX + 3, y);
+      }
+      y += 6;
+      // Concept
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(75, 85, 99);
+      const conceptLines = doc.splitTextToSize(idea.concept || '', maxW - 4);
+      for (const line of conceptLines) {
+        checkPage(5);
+        doc.text(line, ml + 2, y);
+        y += 4.2;
+      }
+      // Execution
+      if (idea.execution) {
+        y += 1;
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(8.5);
+        doc.setTextColor(...grey);
+        const exLines = doc.splitTextToSize('Execution: ' + idea.execution, maxW - 4);
+        for (const line of exLines) {
+          checkPage(5);
+          doc.text(line, ml + 2, y);
+          y += 4;
+        }
+      }
+      y += 5;
+    });
+  }
+
+  // ─── QUESTIONS ───
+  const qs = analysisResult?.questions || [];
+  if (qs.length > 0) {
+    drawSectionHeader('Questions to Ask (' + qs.length + ')');
+    const priorityColors = { critical: red, important: amber, helpful: blue };
+    qs.forEach((q, i) => {
+      checkPage(16);
+      // Priority badge
+      const pColor = priorityColors[q.priority] || grey;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(...pColor);
+      doc.text(q.priority.toUpperCase(), ml, y);
+      y += 4;
+      // Question
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...dark);
+      const qLines = doc.splitTextToSize(q.question || '', maxW - 2);
+      for (const line of qLines) {
+        checkPage(5);
+        doc.text(line, ml + 1, y);
+        y += 4.2;
+      }
+      // Context
+      if (q.context) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(...grey);
+        const cLines = doc.splitTextToSize(q.context, maxW - 2);
+        for (const line of cLines) {
+          checkPage(5);
+          doc.text(line, ml + 1, y);
+          y += 3.8;
+        }
+      }
+      y += 4;
+    });
+  }
+
+  // ─── RAW BRIEF ───
+  if (rawText) {
+    drawSectionHeader('Original Brief Text');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...grey);
+    const rawLines = doc.splitTextToSize(rawText, maxW);
+    for (const line of rawLines) {
+      checkPage(4);
+      doc.text(line, ml, y);
+      y += 3.5;
+    }
+  }
+
+  // ─── FOOTER on each page ───
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(180, 180, 180);
+    doc.text('Pubity Group — Brief Analyzer', ml, ph - 8);
+    doc.text('Page ' + i + ' of ' + totalPages, pw - mr, ph - 8, { align: 'right' });
+    // Yellow bar at bottom
+    doc.setFillColor(...yellow);
+    doc.rect(0, ph - 3, pw, 3, 'F');
+  }
+
+  // Save
+  const fileName = `brief-${brand.replace(/\s+/g, '-').toLowerCase()}${campaign ? '-' + campaign.replace(/\s+/g, '-').toLowerCase() : ''}.pdf`;
+  doc.save(fileName);
+}
+
+function copyAll() {
+  const lines = FIELDS.map(f => `${f.label}: ${data[f.key] || '—'}`);
+  const qs = analysisResult?.questions || [];
+  if (qs.length > 0) {
+    lines.push('\n--- QUESTIONS TO ASK ---\n');
+    qs.forEach(q => lines.push(`[${q.priority.toUpperCase()}] ${q.question}`));
+  }
+  navigator.clipboard.writeText(lines.join('\n\n')).then(() => {
+    const btn = document.querySelector('[onclick="copyAll()"]');
+    btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy All', 1500);
+  });
+}
+
+function copyQuestions() {
+  const qs = analysisResult?.questions || [];
+  const text = qs.map(q => `[${q.priority.toUpperCase()}] ${q.question}`).join('\n');
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('[onclick="copyQuestions()"]');
+    btn.textContent = 'Copied!'; setTimeout(() => btn.textContent = 'Copy all questions', 1500);
+  });
+}
+
+function updateField(key, value) {
+  data[key] = value;
+  if (value.trim()) fieldMeta[key] = { confidence: 'high', source: 'Manually entered' };
+  else delete fieldMeta[key];
+  renderCompletion();
+  renderSummary();
+}
+
+function showKeySettings() {
+  const action = EMBEDDED_KEY
+    ? prompt('This file has an embedded team key.\n\nType "regenerate" to download a new team file with a different key, or "clear" to remove the saved browser key.', '')
+    : prompt('Settings\n\nType "change" to re-enter keys, "monday" to add/update Monday token, "proxy" to set Monday proxy URL, "team" to generate a team file, or "clear" to remove saved keys.', '');
+  if (!action) return;
+  const a = action.trim().toLowerCase();
+  if (a === 'change') {
+    localStorage.removeItem('ba_key');
+    sessionStorage.removeItem('ba_key');
+    apiKey = '';
+    showState('key');
+  } else if (a === 'monday') {
+    const token = prompt('Paste your Monday.com API token:', mondayKey || '');
+    if (token !== null) {
+      mondayKey = token.trim();
+      if (mondayKey) {
+        localStorage.setItem('ba_monday_key', mondayKey);
+        sessionStorage.setItem('ba_monday_key', mondayKey);
+        alert('Monday.com token saved.');
+      } else {
+        localStorage.removeItem('ba_monday_key');
+        sessionStorage.removeItem('ba_monday_key');
+        alert('Monday.com token removed.');
+      }
+    }
+  } else if (a === 'proxy') {
+    const url = prompt('Paste your Cloudflare Worker proxy URL:\n(e.g. https://monday-proxy.your-name.workers.dev)', mondayProxy || '');
+    if (url !== null) {
+      mondayProxy = url.trim();
+      if (mondayProxy) {
+        localStorage.setItem('ba_monday_proxy', mondayProxy);
+        alert('Monday proxy URL saved.');
+      } else {
+        localStorage.removeItem('ba_monday_proxy');
+        alert('Monday proxy URL removed.');
+      }
+    }
+  } else if (a === 'clear') {
+    localStorage.removeItem('ba_key');
+    sessionStorage.removeItem('ba_key');
+    localStorage.removeItem('ba_monday_key');
+    sessionStorage.removeItem('ba_monday_key');
+    localStorage.removeItem('ba_monday_proxy');
+    mondayKey = '';
+    mondayProxy = '';
+    alert('All saved keys and settings cleared from this browser.');
+  } else if (a === 'team' || a === 'regenerate') {
+    const key = prompt('Paste the API key to embed in the team file:');
+    if (key && key.startsWith('sk-')) {
+      document.getElementById('apiKeyInput').value = key;
+      generateTeamFile();
+    }
+  }
+}
+
+function resetAll() {
+  data = {}; fieldMeta = {}; rawText = ''; currentFileName = ''; analysisResult = null; currentHistoryId = null;
+  manualData = { salesLead: '', briefName: '', proactiveInbound: '', campaignType: '', briefTypes: [], additionalContext: '' };
+  document.getElementById('pasteArea').value = '';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('headerActions').style.display = 'none';
+  document.getElementById('rawTextBox').style.display = 'none';
+  document.getElementById('rawToggle').textContent = 'Show raw text';
+  // Clear manual fields
+  ['manualSalesLead','manualBriefName','manualAdditionalContext','manualProactiveInbound','manualBriefSource','manualCampaignType'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  clearError();
+  switchTab('analysis');
+  showState('upload');
+}
+
+// ─── Utilities ──────────────────────────────────────────
+
+function showState(s) {
+  ['keyState','uploadState','processingState','resultsState'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  const map = { key: 'keyState', upload: 'uploadState', processing: 'processingState', results: 'resultsState' };
+  if (map[s]) document.getElementById(map[s]).style.display = 'block';
+  if (s === 'upload') { const cb = document.getElementById('prevBriefCount'); if (cb) cb.textContent = getHistory().length; }
+}
+
+function updateStep(text) { document.getElementById('processingStep').textContent = text; }
+function showError(msg) { const b = document.getElementById('errorBox'); b.textContent = msg; b.style.display = 'block'; }
+function clearError() { document.getElementById('errorBox').style.display = 'none'; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escA(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'\\&#39;').replace(/`/g,'\\&#96;'); }
+
+document.getElementById('pasteArea').addEventListener('input', function() {
+  document.getElementById('analyzeBtn').disabled = !this.value.trim();
+});
+
+document.getElementById('apiKeyInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') saveKey();
+});
+
+// ─── Monday.com Integration ─────────────────────────────
+
+// Monday.com's API doesn't support CORS from browser files,
+// so we route through your own Cloudflare Worker proxy.
+async function mondayFetch(query) {
+  if (!mondayProxy) {
+    throw new Error('No Monday Proxy URL set. Go to settings (gear icon) → type "proxy" to set your Cloudflare Worker URL.\n\nSee the monday-proxy-worker.js file for 2-minute setup instructions.');
+  }
+
+  const url = mondayProxy.replace(/\/+$/, ''); // trim trailing slashes
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': mondayKey,
+      'API-Version': '2024-10'
+    },
+    body: JSON.stringify({ query })
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error('Proxy returned ' + res.status + ': ' + text);
+  }
+
+  return await res.json();
+}
+
+let _mondayExporting = false;
+async function exportToMonday() {
+  if (_mondayExporting) return;
+  _mondayExporting = true;
+  if (!mondayKey) {
+    const token = prompt('Enter your Monday.com API token:\nGet it from monday.com/developers → Personal API Token.\n\nThis will be saved so you only need to do it once:');
+    if (!token || !token.trim()) return;
+    mondayKey = token.trim();
+    localStorage.setItem('ba_monday_key', mondayKey);
+    sessionStorage.setItem('ba_monday_key', mondayKey);
+  }
+  if (!mondayProxy) {
+    const url = prompt('Enter your Monday Proxy URL:\n(Your Cloudflare Worker — see monday-proxy-worker.js for 2-min setup)\n\nThis will be saved so you only need to do it once:');
+    if (!url || !url.trim()) return;
+    mondayProxy = url.trim();
+    localStorage.setItem('ba_monday_proxy', mondayProxy);
+  }
+
+  const btn = document.getElementById('mondayBtn');
+  const originalText = btn.innerHTML;
+  btn.textContent = 'Exporting...';
+  btn.disabled = true;
+
+  try {
+    // Use manual brief name or auto-generate
+    const itemName = manualData.briefName || (() => {
+      const brand = (data.brandName || 'Unknown').toUpperCase().replace(/\s+/g, '-');
+      const campaign = (data.campaignName || 'Brief').toUpperCase().replace(/\s+/g, '-');
+      return `${brand}_${campaign}`;
+    })();
+
+    // ═══════════════════════════════════════════════════════
+    // 1. Campaign Briefing Springboard (full detail)
+    // ═══════════════════════════════════════════════════════
+    const springboardValues = {};
+
+    if (manualData.proactiveInbound) springboardValues['text_mknt8cn6'] = manualData.proactiveInbound;
+
+    if (manualData.campaignType) {
+      const campaignTypeMap = { 'Amplification': 1, 'Integrated Editorial': 0, 'Bespoke': 2, 'Hybrid or Whatever works best': 3 };
+      const typeId = campaignTypeMap[manualData.campaignType];
+      if (typeId !== undefined) springboardValues['dropdown_mknt6qct'] = { ids: [typeId] };
+    }
+
+    if (manualData.briefTypes.length > 0) {
+      const briefTypeMap = { 'Awareness': 1, 'Cultural-Clout': 0, 'Perception': 2, 'Consideration': 3, 'Conversion': 4, 'Visibility': 5 };
+      const ids = manualData.briefTypes.map(t => briefTypeMap[t]).filter(id => id !== undefined);
+      if (ids.length > 0) springboardValues['dropdown_mkrb6fba'] = { ids: ids };
+    }
+
+    // Sales Person on Springboard
+    const springboardSellerId = SELLER_USER_IDS[manualData.salesLead];
+    if (springboardSellerId) {
+      springboardValues['peoplelwlkw7df'] = { personsAndTeams: [{ id: springboardSellerId, kind: 'person' }] };
+    }
+
+    if (data.brandName) springboardValues['short_text__1'] = data.brandName;
+    if (data.campaignName) springboardValues['short_text2__1'] = data.campaignName;
+    if (data.businessChallenge) springboardValues['long_text__1'] = { text: data.businessChallenge };
+    if (data.marketingObjective) springboardValues['long_text_mkrb44ww'] = { text: data.marketingObjective };
+    if (data.widerCampaign) springboardValues['long_text_mkntk2ny'] = { text: data.widerCampaign };
+    if (data.targetAudience) springboardValues['long_text5__1'] = { text: data.targetAudience };
+    if (data.deliverables) springboardValues['long_text3__1'] = { text: data.deliverables };
+    if (data.kpis) springboardValues['long_text8__1'] = { text: data.kpis };
+    if (data.dealValue) {
+      const num = parseFloat(data.dealValue.replace(/[^0-9.]/g, ''));
+      if (!isNaN(num)) springboardValues['number__1'] = num;
+    }
+    if (data.keyDates) springboardValues['long_text50__1'] = { text: data.keyDates };
+    if (data.goodLooksLike) springboardValues['long_text_mknt6etw'] = { text: data.goodLooksLike };
+    if (data.whatWillWin) springboardValues['long_text_mknthxea'] = { text: data.whatWillWin };
+
+    const springboardMutation = `mutation {
+      create_item(
+        board_id: ${MONDAY_BOARD_ID},
+        group_id: "topics",
+        item_name: ${JSON.stringify(itemName)},
+        column_values: ${JSON.stringify(JSON.stringify(springboardValues))}
+      ) { id }
+    }`;
+
+    const springboardResult = await mondayFetch(springboardMutation);
+    if (springboardResult.errors?.length > 0) {
+      throw new Error('Springboard: ' + (springboardResult.errors[0].message || 'API error'));
+    }
+    if (!springboardResult.data?.create_item?.id) {
+      throw new Error('Springboard: Unexpected response');
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 2. 2026 Pubity Group Campaign Overview (key info)
+    // ═══════════════════════════════════════════════════════
+    const overviewValues = {};
+
+    const sellerUserId = SELLER_USER_IDS[manualData.salesLead];
+    if (sellerUserId) {
+      overviewValues['multiple_person_mksvy0tm'] = { personsAndTeams: [{ id: sellerUserId, kind: 'person' }] };
+    }
+
+    const kpiNotes = [data.kpis, data.deliverables].filter(Boolean).join('\n\n');
+    if (kpiNotes) overviewValues['text8__1'] = kpiNotes;
+
+    // Campaign Live Dates (timeline) — try to parse from flight dates
+    if (data.flightDates) {
+      const dateMatch = data.flightDates.match(/(\d{4}-\d{2}-\d{2})/g);
+      if (dateMatch && dateMatch.length >= 2) {
+        overviewValues['first_live_date__1'] = { from: dateMatch[0], to: dateMatch[1] };
+      } else {
+        // Try parsing common formats like "1 June - 30 June 2026"
+        const parts = data.flightDates.split(/[-–—to]+/i).map(s => s.trim());
+        if (parts.length >= 2) {
+          const tryParse = (s) => { const d = new Date(s); return isNaN(d) ? null : d.toISOString().slice(0, 10); };
+          const from = tryParse(parts[0]);
+          const to = tryParse(parts[parts.length - 1]);
+          if (from && to) overviewValues['first_live_date__1'] = { from, to };
+        }
+      }
+    }
+
+    const notesText = [
+      data.dealValue ? `Deal Value: ${data.dealValue}` : '',
+      data.businessChallenge ? `Business Challenge: ${data.businessChallenge}` : '',
+      data.marketingObjective ? `Marketing Objective: ${data.marketingObjective}` : '',
+      data.targetAudience ? `Target Audience: ${data.targetAudience}` : '',
+      data.flightDates ? `Flight Dates: ${data.flightDates}` : '',
+      manualData.additionalContext ? `Additional Context: ${manualData.additionalContext}` : ''
+    ].filter(Boolean).join('\n\n');
+    if (notesText) overviewValues['text_mkw3am4s'] = notesText;
+
+    if (manualData.briefSource) overviewValues['text9__1'] = manualData.briefSource;
+    else if (manualData.proactiveInbound) overviewValues['text9__1'] = manualData.proactiveInbound;
+
+    // Deal Type → deal_type__1 (status: 2=Amplification, 0=Integrated Editorial, 1=Bespoke)
+    if (manualData.campaignType) {
+      const dealTypeMap = { 'Amplification': 'Amplification', 'Integrated Editorial': 'Integrated Editorial', 'Bespoke': 'Bespoke', 'Hybrid or Whatever works best': 'Other' };
+      const label = dealTypeMap[manualData.campaignType];
+      if (label) overviewValues['deal_type__1'] = { label };
+    }
+
+    const overviewMutation = `mutation {
+      create_item(
+        board_id: ${MONDAY_OVERVIEW_BOARD_ID},
+        group_id: "group_mkvm63bj",
+        item_name: ${JSON.stringify(itemName)},
+        column_values: ${JSON.stringify(JSON.stringify(overviewValues))}
+      ) { id }
+    }`;
+
+    const overviewResult = await mondayFetch(overviewMutation);
+    if (overviewResult.errors?.length > 0) {
+      throw new Error('Overview: ' + (overviewResult.errors[0].message || 'API error'));
+    }
+    if (!overviewResult.data?.create_item?.id) {
+      throw new Error('Overview: Unexpected response');
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // Success — both boards updated. Save final state to history.
+    // ═══════════════════════════════════════════════════════
+    saveToHistory();
+    btn.innerHTML = 'Exported!';
+    btn.style.background = '#10b981';
+    btn.style.color = '#fff';
+    btn.style.borderColor = '#10b981';
+    setTimeout(() => {
+      btn.innerHTML = originalText;
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+      btn.disabled = false;
+      _mondayExporting = false;
+    }, 2500);
+
+  } catch (err) {
+    alert('Failed to export to Monday: ' + err.message);
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    _mondayExporting = false;
+  }
+}
+
+// ─── Brief History ───────────────────────────────────────
+
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem('ba_history') || '[]'); }
+  catch { return []; }
+}
+
+function saveToHistory() {
+  // Read manual fields directly (don't call updateManual to avoid loop)
+  const sl = document.getElementById('manualSalesLead');
+  if (sl) manualData.salesLead = sl.value;
+  const bn = document.getElementById('manualBriefName');
+  if (bn) manualData.briefName = bn.value;
+  const pi = document.getElementById('manualProactiveInbound');
+  if (pi) manualData.proactiveInbound = pi.value;
+  const bs = document.getElementById('manualBriefSource');
+  if (bs) manualData.briefSource = bs.value;
+  const ct = document.getElementById('manualCampaignType');
+  if (ct) manualData.campaignType = ct.value;
+  const ac = document.getElementById('manualAdditionalContext');
+  if (ac) manualData.additionalContext = ac.value;
+
+  const history = getHistory();
+  const entryId = currentHistoryId || Date.now();
+  const entry = {
+    id: entryId,
+    date: new Date().toISOString(),
+    fileName: currentFileName || 'Pasted text',
+    brandName: data.brandName || 'Unknown brand',
+    campaignName: manualData.briefName || data.campaignName || '',
+    summary: analysisResult?.summary || '',
+    ideasCount: (analysisResult?.thoughtStarters || []).length,
+    questionsCount: (analysisResult?.questions || []).length,
+    data: data,
+    fieldMeta: fieldMeta,
+    rawText: rawText,
+    analysisResult: analysisResult,
+    manualData: JSON.parse(JSON.stringify(manualData))
+  };
+  // Replace existing entry for this brief, or remove recent duplicate
+  const existing = history.findIndex(h => h.id === currentHistoryId);
+  if (existing !== -1) {
+    history.splice(existing, 1);
+  } else {
+    const recent = history.findIndex(h => h.brandName === entry.brandName && h.fileName === entry.fileName && (entryId - h.id) < 60000);
+    if (recent !== -1) history.splice(recent, 1);
+  }
+  history.unshift(entry);
+  currentHistoryId = entryId;
+  // Keep max 30 entries
+  if (history.length > 30) history.length = 30;
+  try { localStorage.setItem('ba_history', JSON.stringify(history)); } catch {}
+}
+
+function renderHistory() {
+  const container = document.getElementById('historySection');
+  if (!container) return;
+  const history = getHistory();
+  // Update Previous Briefs count badge
+  const countBadge = document.getElementById('prevBriefCount');
+  if (countBadge) countBadge.textContent = history.length;
+  if (history.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const items = history.map(h => {
+    const date = new Date(h.date);
+    const dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const timeStr = date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    return `
+      <div class="history-item" onclick="loadFromHistory(${h.id})">
+        <div class="history-info">
+          <div class="history-brand">${esc(h.brandName)}${h.campaignName ? ' — ' + esc(h.campaignName) : ''}</div>
+          <div class="history-meta">
+            <span>${dateStr} at ${timeStr}</span>
+            <span>${esc(h.fileName)}</span>
+            ${h.ideasCount ? `<span>${h.ideasCount} ideas</span>` : ''}
+            ${h.questionsCount ? `<span>${h.questionsCount} questions</span>` : ''}
+          </div>
+        </div>
+        <div class="history-actions">
+          <button class="history-delete" onclick="event.stopPropagation(); deleteFromHistory(${h.id})" title="Delete">&#10005;</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <h3 style="font-size:15px;font-weight:700;color:var(--g700);margin:0;">Previous Briefs</h3>
+      ${history.length > 3 ? `<button class="btn btn-outline" style="font-size:11px;padding:4px 12px;" onclick="clearAllHistory()">Clear all</button>` : ''}
+    </div>
+    <div class="history-list">${items}</div>
+  `;
+}
+
+function loadFromHistory(id) {
+  const history = getHistory();
+  const entry = history.find(h => h.id === id);
+  if (!entry) return;
+
+  currentHistoryId = entry.id;
+  data = entry.data || {};
+  fieldMeta = entry.fieldMeta || {};
+  rawText = entry.rawText || '';
+  currentFileName = entry.fileName || '';
+  analysisResult = entry.analysisResult || null;
+
+  // Restore manual data if saved
+  if (entry.manualData) {
+    manualData = JSON.parse(JSON.stringify(entry.manualData));
+  } else {
+    manualData = { salesLead: '', briefName: '', proactiveInbound: '', campaignType: '', briefTypes: [], additionalContext: '' };
+  }
+
+  processAnalysis(analysisResult);
+  renderResults();
+
+  // Populate manual form fields
+  const sl = document.getElementById('manualSalesLead'); if (sl) sl.value = manualData.salesLead || '';
+  const bn = document.getElementById('manualBriefName'); if (bn) bn.value = manualData.briefName || '';
+  const pi = document.getElementById('manualProactiveInbound'); if (pi) pi.value = manualData.proactiveInbound || '';
+  const bsrc = document.getElementById('manualBriefSource'); if (bsrc) bsrc.value = manualData.briefSource || '';
+  const ct = document.getElementById('manualCampaignType'); if (ct) ct.value = manualData.campaignType || '';
+  const ac = document.getElementById('manualAdditionalContext'); if (ac) ac.value = manualData.additionalContext || '';
+  renderBriefTypePills();
+
+  showState('results');
+}
+
+function deleteFromHistory(id) {
+  let history = getHistory();
+  history = history.filter(h => h.id !== id);
+  try { localStorage.setItem('ba_history', JSON.stringify(history)); } catch {}
+  renderHistory();
+}
+
+function clearAllHistory() {
+  if (!confirm('Clear all brief history? This cannot be undone.')) return;
+  localStorage.removeItem('ba_history');
+  renderHistory();
+}
+
+// ─── Upload Tab Switching ────────────────────────────────
+
+function switchUploadTab(tab) {
+  document.querySelectorAll('#uploadTabBar .tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  document.getElementById('uploadTab-newBrief').style.display = tab === 'newBrief' ? 'block' : 'none';
+  document.getElementById('uploadTab-previousBriefs').style.display = tab === 'previousBriefs' ? 'block' : 'none';
+  if (tab === 'previousBriefs') renderPreviousBriefs();
+}
+
+function buildBrandIntel(briefs) {
+  // Collect all data points across briefs for this brand
+  const objectives = [];
+  const audiences = [];
+  const briefTypes = {};
+  const campaignTypes = {};
+  const kpis = [];
+  const challenges = [];
+  const deliverables = [];
+  const sellers = {};
+
+  briefs.forEach(h => {
+    const d = h.data || {};
+    const m = h.manualData || {};
+    if (d.marketingObjective) objectives.push(d.marketingObjective);
+    if (d.targetAudience) audiences.push(d.targetAudience);
+    if (d.businessChallenge) challenges.push(d.businessChallenge);
+    if (d.kpis) kpis.push(d.kpis);
+    if (d.deliverables) deliverables.push(d.deliverables);
+    (m.briefTypes || []).forEach(t => { briefTypes[t] = (briefTypes[t] || 0) + 1; });
+    if (m.campaignType) campaignTypes[m.campaignType] = (campaignTypes[m.campaignType] || 0) + 1;
+    if (m.salesLead) sellers[m.salesLead] = (sellers[m.salesLead] || 0) + 1;
+  });
+
+  // Find common words/themes across objectives and challenges
+  function findThemes(texts, minCount) {
+    const words = {};
+    const stopWords = new Set(['the','a','an','and','or','to','of','for','in','on','with','is','are','was','were','be','been','being','have','has','had','do','does','did','will','would','could','should','may','might','shall','can','that','this','it','they','them','their','our','we','us','its','from','at','by','as','but','not','so','if','than','too','very','just','about','into','through','during','before','after','above','below','between','under','over','out','up','down','off','all','each','every','both','few','more','most','other','some','such','no','nor','only','own','same','also','how','what','which','who','whom','when','where','why','how','any','many','much']);
+    texts.forEach(t => {
+      const unique = new Set(t.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(w => w.length > 3 && !stopWords.has(w)));
+      unique.forEach(w => { words[w] = (words[w] || 0) + 1; });
+    });
+    return Object.entries(words).filter(([,c]) => c >= minCount).sort((a,b) => b[1] - a[1]).slice(0, 8).map(([w]) => w);
+  }
+
+  const minForTheme = Math.max(2, Math.floor(briefs.length * 0.4));
+  const objectiveThemes = findThemes(objectives, minForTheme);
+  const challengeThemes = findThemes(challenges, minForTheme);
+  const audienceThemes = findThemes(audiences, minForTheme);
+  const kpiThemes = findThemes(kpis, minForTheme);
+
+  // Also use lower threshold for single-brief brands
+  const minForThemeLow = briefs.length === 1 ? 1 : minForTheme;
+  const objectiveThemesLow = findThemes(objectives, minForThemeLow);
+  const challengeThemesLow = findThemes(challenges, minForThemeLow);
+  const audienceThemesLow = findThemes(audiences, minForThemeLow);
+  const kpiThemesLow = findThemes(kpis, minForThemeLow);
+
+  // Build the insight text
+  const insights = [];
+  const topBriefTypes = Object.entries(briefTypes).sort((a,b) => b[1] - a[1]);
+  const topCampaignTypes = Object.entries(campaignTypes).sort((a,b) => b[1] - a[1]);
+
+  if (topBriefTypes.length > 0) {
+    insights.push(`Typically looking for <strong>${topBriefTypes.map(([t]) => t.toLowerCase()).join('</strong> and <strong>')}</strong> outcomes.`);
+  }
+  if (objectiveThemesLow.length > 0) {
+    insights.push(`Common objectives centre around ${objectiveThemesLow.slice(0, 4).join(', ')}.`);
+  }
+  if (audienceThemesLow.length > 0) {
+    insights.push(`Audience focus tends towards ${audienceThemesLow.slice(0, 4).join(', ')}.`);
+  }
+  if (kpiThemesLow.length > 0) {
+    insights.push(`They typically measure success through ${kpiThemesLow.slice(0, 4).join(', ')}.`);
+  }
+  if (challengeThemesLow.length > 0) {
+    insights.push(`Key business challenges involve ${challengeThemesLow.slice(0, 4).join(', ')}.`);
+  }
+
+  // Fallback if nothing extracted
+  if (insights.length === 0 && briefs.length === 1) {
+    const d = briefs[0].data || {};
+    if (d.marketingObjective) insights.push(`Objective: ${d.marketingObjective.substring(0, 120)}${d.marketingObjective.length > 120 ? '...' : ''}`);
+    if (d.targetAudience) insights.push(`Target audience: ${d.targetAudience.substring(0, 120)}${d.targetAudience.length > 120 ? '...' : ''}`);
+    if (d.kpis) insights.push(`KPIs: ${d.kpis.substring(0, 120)}${d.kpis.length > 120 ? '...' : ''}`);
+  }
+  if (insights.length === 0) {
+    insights.push('Upload more briefs from this brand to unlock deeper intelligence on what they like and how they buy.');
+  }
+
+  // Build HTML
+  let html = '<div class="brand-intel">';
+  html += '<div class="brand-intel-title">\u{1F4CA} What this brand likes</div>';
+
+  // Stats row
+  html += '<div style="margin-bottom:10px;">';
+  html += `<span class="brand-intel-stat"><strong>${briefs.length}</strong> brief${briefs.length !== 1 ? 's' : ''} on file</span>`;
+  const topSeller = Object.entries(sellers).sort((a,b) => b[1] - a[1])[0];
+  if (topSeller) html += `<span class="brand-intel-stat">Lead seller: <strong>${esc(topSeller[0])}</strong></span>`;
+  html += '</div>';
+
+  // Tags row — brief types and campaign types
+  if (topBriefTypes.length > 0 || topCampaignTypes.length > 0) {
+    html += '<div class="brand-intel-row">';
+    topBriefTypes.forEach(([t, c]) => { html += `<span class="brand-intel-tag">${esc(t)} (${c})</span>`; });
+    topCampaignTypes.forEach(([t, c]) => { html += `<span class="brand-intel-tag">${esc(t)} (${c})</span>`; });
+    html += '</div>';
+  }
+
+  // Insight text — always shows
+  html += `<div class="brand-intel-insight">${insights.join(' ')}</div>`;
+
+  html += '</div>';
+  return html;
+}
+
+function renderPreviousBriefs(filter) {
+  const container = document.getElementById('previousBriefsContainer');
+  const countBadge = document.getElementById('prevBriefCount');
+  const history = getHistory();
+
+  if (countBadge) countBadge.textContent = history.length;
+
+  if (history.length === 0) {
+    container.innerHTML = '<div class="prev-empty">No briefs analysed yet. Upload your first brief to get started.</div>';
+    return;
+  }
+
+  // Group by brand
+  const brands = {};
+  history.forEach(h => {
+    const brand = h.brandName || 'Unknown';
+    if (!brands[brand]) brands[brand] = [];
+    brands[brand].push(h);
+  });
+
+  // Sort brands alphabetically
+  const sortedBrands = Object.keys(brands).sort((a, b) => a.localeCompare(b));
+
+  // Filter if search term provided
+  const searchTerm = (filter || '').toLowerCase();
+  const filtered = searchTerm ? sortedBrands.filter(b => b.toLowerCase().includes(searchTerm)) : sortedBrands;
+
+  let html = `<input class="brand-search" type="text" placeholder="Search brands..." oninput="renderPreviousBriefs(this.value)" value="${esc(filter || '')}">`;
+
+  if (filtered.length === 0) {
+    html += '<div class="prev-empty">No brands match your search.</div>';
+  }
+
+  filtered.forEach(brand => {
+    const briefs = brands[brand];
+    let intelHtml = '';
+    try { intelHtml = buildBrandIntel(briefs); } catch(e) { console.error('Brand intel error:', e); intelHtml = '<div class="brand-intel"><div class="brand-intel-title">Brand Intelligence</div><div class="brand-intel-insight">Not enough data yet — keep uploading briefs for this brand.</div></div>'; }
+
+    const briefItems = briefs.map(h => {
+      const date = new Date(h.date);
+      const dateStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      const seller = h.manualData?.salesLead || '';
+      return `
+        <div class="brand-brief-item" onclick="loadFromHistory(${h.id})">
+          <div>
+            <div class="brand-brief-campaign">${esc(h.campaignName || h.fileName || 'Untitled')}</div>
+            <div class="brand-brief-meta">
+              <span>${dateStr}</span>
+              ${h.ideasCount ? `<span>${h.ideasCount} ideas</span>` : ''}
+              ${h.questionsCount ? `<span>${h.questionsCount} questions</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            ${seller ? `<span class="brand-brief-seller">${esc(seller)}</span>` : ''}
+            <button class="history-delete" onclick="event.stopPropagation(); deleteFromHistory(${h.id}); renderPreviousBriefs();" title="Delete">&#10005;</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    html += `
+      <div class="brand-group">
+        <div class="brand-header" onclick="toggleBrand(this)">
+          <span class="brand-name">${esc(brand)}</span>
+          <span class="brand-count">${briefs.length} brief${briefs.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="brand-expand" style="display:none;">
+          ${intelHtml}
+          <div class="brand-briefs">
+            ${briefItems}
+          </div>
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function toggleBrand(header) {
+  const expandable = header.nextElementSibling;
+  const isOpen = expandable.style.display !== 'none';
+  expandable.style.display = isOpen ? 'none' : 'block';
+  header.classList.toggle('expanded', !isOpen);
+}
+
+// Init
+init();
+</script>
+</body>
+</html>
