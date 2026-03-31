@@ -232,7 +232,7 @@
     <div class="logo"><img src="https://framerusercontent.com/images/XXDKLuMsddarkzSi0AGzpc12J0.svg" alt="Pubity"></div>
     <div>
       <div class="header-title">Brief Analyzer</div>
-      <div class="header-sub">Pubity Group — Partnerships · v3.1</div>
+      <div class="header-sub">Pubity Group — Partnerships · v4.0</div>
     </div>
   </div>
   <div class="header-actions" id="headerActions" style="display:none;">
@@ -247,37 +247,8 @@
 </div>
 
 <div class="container">
-  <!-- API KEY SCREEN -->
-  <div id="keyState">
-    <div class="key-screen">
-      <div style="font-size:42px;margin-bottom:16px;">🔑</div>
-      <h2>Connect your tools</h2>
-      <p>This dashboard uses Claude to analyze briefs and can push results straight to Monday.com. Keys stay in your browser and are never sent anywhere except their respective APIs.</p>
-      <div style="text-align:left;margin-bottom:18px;">
-        <label style="font-size:12px;font-weight:600;color:var(--g700);display:block;margin-bottom:5px;">Anthropic API Key <span style="color:var(--red);">*</span></label>
-        <input type="password" class="key-input" id="apiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off">
-        <div class="key-note" style="margin-top:6px;">Get a key from <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#d7c300;">console.anthropic.com</a></div>
-      </div>
-      <div style="text-align:left;margin-bottom:14px;">
-        <label style="font-size:12px;font-weight:600;color:var(--g700);display:block;margin-bottom:5px;">Monday.com API Token <span style="font-weight:400;color:var(--g400);">(optional)</span></label>
-        <input type="password" class="key-input" id="mondayKeyInput" placeholder="eyJhbGciOi..." autocomplete="off">
-        <div class="key-note" style="margin-top:6px;">Get your token from <a href="https://monday.com/developers" target="_blank" style="color:#d7c300;">monday.com/developers</a> → API Token</div>
-      </div>
-      <div style="text-align:left;margin-bottom:14px;">
-        <label style="font-size:12px;font-weight:600;color:var(--g700);display:block;margin-bottom:5px;">Monday Proxy URL <span style="font-weight:400;color:var(--g400);">(required for Export to Monday)</span></label>
-        <input type="text" class="key-input" id="mondayProxyInput" placeholder="https://monday-proxy.your-name.workers.dev" autocomplete="off">
-        <div class="key-note" style="margin-top:6px;">Your Cloudflare Worker URL — see the <code>monday-proxy-worker.js</code> file for setup instructions</div>
-      </div>
-      <label class="key-remember">
-        <input type="checkbox" id="rememberKey" checked> Remember keys in this browser
-      </label>
-      <button class="btn btn-primary btn-large" onclick="saveKey()">Continue</button>
-      <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--g200);">
-        <button class="btn btn-outline btn-large" onclick="generateTeamFile()" style="margin-top:0;">Generate team-ready file</button>
-        <div class="key-note" style="margin-top:8px;">Creates a downloadable version with keys baked in — share it with your team and they'll never see this screen.</div>
-      </div>
-    </div>
-  </div>
+  <!-- KEY STATE (hidden — server-side keys) -->
+  <div id="keyState" style="display:none;"></div>
 
   <!-- UPLOAD SCREEN -->
   <div id="uploadState" style="display:none;">
@@ -428,14 +399,7 @@ const FIELDS = [
 ];
 
 
-// ─── Embedded keys (set when generating team file) ──────
-const EMBEDDED_KEY = "";
-const EMBEDDED_MONDAY_KEY = "";
-const EMBEDDED_MONDAY_PROXY = "";
-
-let apiKey = "";
-let mondayKey = "";
-let mondayProxy = "";
+// ─── Server-side API (keys handled by Vercel env vars) ──
 let data = {};
 let fieldMeta = {};
 let rawText = "";
@@ -461,94 +425,10 @@ const SELLER_USER_IDS = {
 // ─── API Key ────────────────────────────────────────────
 
 function init() {
-  // Load Monday key — embedded takes priority, then localStorage
-  if (EMBEDDED_MONDAY_KEY) {
-    mondayKey = atob(EMBEDDED_MONDAY_KEY);
-  } else {
-    mondayKey = localStorage.getItem('ba_monday_key') || sessionStorage.getItem('ba_monday_key') || '';
-  }
-  // Load Monday proxy URL — embedded takes priority, then localStorage
-  if (EMBEDDED_MONDAY_PROXY) {
-    mondayProxy = atob(EMBEDDED_MONDAY_PROXY);
-  } else {
-    mondayProxy = localStorage.getItem('ba_monday_proxy') || '';
-  }
-  // Load Anthropic key — embedded takes priority, then localStorage
-  if (EMBEDDED_KEY) {
-    apiKey = atob(EMBEDDED_KEY);
-    showState('upload');
-    return;
-  }
-  const saved = localStorage.getItem('ba_key') || sessionStorage.getItem('ba_key');
-  if (saved) {
-    apiKey = saved;
-    showState('upload');
-  } else {
-    showState('key');
-  }
-}
-
-function saveKey() {
-  const val = document.getElementById('apiKeyInput').value.trim();
-  if (!val || !val.startsWith('sk-')) {
-    alert('Please enter a valid Anthropic API key (starts with sk-)');
-    return;
-  }
-  apiKey = val;
-  const mondayVal = document.getElementById('mondayKeyInput').value.trim();
-  const proxyVal = document.getElementById('mondayProxyInput').value.trim();
-  if (mondayVal) mondayKey = mondayVal;
-  if (proxyVal) mondayProxy = proxyVal;
-  if (document.getElementById('rememberKey').checked) {
-    localStorage.setItem('ba_key', val);
-    if (mondayVal) localStorage.setItem('ba_monday_key', mondayVal);
-    if (proxyVal) localStorage.setItem('ba_monday_proxy', proxyVal);
-  }
-  sessionStorage.setItem('ba_key', val);
-  if (mondayVal) sessionStorage.setItem('ba_monday_key', mondayVal);
+  // Server-side keys — go straight to upload
   showState('upload');
 }
 
-function generateTeamFile() {
-  const val = document.getElementById('apiKeyInput').value.trim();
-  if (!val || !val.startsWith('sk-')) {
-    alert('Enter your API key above first — that key will be embedded into the team file.');
-    return;
-  }
-  const mondayVal = document.getElementById('mondayKeyInput').value.trim() || mondayKey || '';
-  const proxyVal = document.getElementById('mondayProxyInput').value.trim() || mondayProxy || '';
-  // Encode keys as base64 so they're not in plain text
-  const encoded = btoa(val);
-  // Get the current page HTML and inject all keys
-  let teamHtml = document.documentElement.outerHTML;
-  teamHtml = teamHtml.replace(
-    'const EMBEDDED_KEY = "";',
-    'const EMBEDDED_KEY = "' + encoded + '";'
-  );
-  if (mondayVal) {
-    const encodedMonday = btoa(mondayVal);
-    teamHtml = teamHtml.replace(
-      'const EMBEDDED_MONDAY_KEY = "";',
-      'const EMBEDDED_MONDAY_KEY = "' + encodedMonday + '";'
-    );
-  }
-  if (proxyVal) {
-    const encodedProxy = btoa(proxyVal);
-    teamHtml = teamHtml.replace(
-      'const EMBEDDED_MONDAY_PROXY = "";',
-      'const EMBEDDED_MONDAY_PROXY = "' + encodedProxy + '";'
-    );
-  }
-  // Download it
-  const blob = new Blob(['<!DOCTYPE html>\n<html lang="en">' + teamHtml.slice(teamHtml.indexOf('<head'))], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'brief-analyzer-pubity.html';
-  a.click();
-  URL.revokeObjectURL(url);
-  alert('Done! Share "brief-analyzer-pubity.html" with your team. Both API keys are baked in — no setup needed.');
-}
 
 // ─── File Handling ──────────────────────────────────────
 
@@ -721,44 +601,23 @@ Generate smart, specific questions — not generic ones. Reference what IS in th
 If a field genuinely has no answer and can't be inferred, set value to "" and explain in source.`;
 
   try {
-    const maxRetries = 3;
-    let response;
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
-          system: systemPrompt,
-          messages: [{
-            role: 'user',
-            content: `Here is the brand brief to analyze:\n\n---\n\n${text}\n\n---\n\nAnalyze this brief and return the JSON object as specified. Be thorough — extract everything you can.`
-          }]
-        })
-      });
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{
+          role: 'user',
+          content: `Here is the brand brief to analyze:\n\n---\n\n${text}\n\n---\n\nAnalyze this brief and return the JSON object as specified. Be thorough — extract everything you can.`
+        }]
+      })
+    });
 
-      if (response.ok) break;
-      if (response.status === 529 || response.status === 503 || response.status === 500) {
-        if (attempt < maxRetries) {
-          updateStep(`API busy — retrying (${attempt}/${maxRetries})...`);
-          await new Promise(r => setTimeout(r, 2000 * attempt));
-          continue;
-        }
-      }
-      // Non-retryable error or final attempt
+    if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      if (response.status === 401) {
-        localStorage.removeItem('ba_key');
-        sessionStorage.removeItem('ba_key');
-        throw new Error('Invalid API key. Please re-enter your key.');
-      }
-      throw new Error(err.error?.message || `API error (${response.status})`);
+      throw new Error(err.error || `API error (${response.status})`);
     }
 
     updateStep('Processing response...');
@@ -1356,57 +1215,12 @@ function updateField(key, value) {
 }
 
 function showKeySettings() {
-  const action = EMBEDDED_KEY
-    ? prompt('This file has an embedded team key.\n\nType "regenerate" to download a new team file with a different key, or "clear" to remove the saved browser key.', '')
-    : prompt('Settings\n\nType "change" to re-enter keys, "monday" to add/update Monday token, "proxy" to set Monday proxy URL, "team" to generate a team file, or "clear" to remove saved keys.', '');
+  const action = prompt('Settings\n\nType "clear" to clear brief history from this browser.', '');
   if (!action) return;
   const a = action.trim().toLowerCase();
-  if (a === 'change') {
-    localStorage.removeItem('ba_key');
-    sessionStorage.removeItem('ba_key');
-    apiKey = '';
-    showState('key');
-  } else if (a === 'monday') {
-    const token = prompt('Paste your Monday.com API token:', mondayKey || '');
-    if (token !== null) {
-      mondayKey = token.trim();
-      if (mondayKey) {
-        localStorage.setItem('ba_monday_key', mondayKey);
-        sessionStorage.setItem('ba_monday_key', mondayKey);
-        alert('Monday.com token saved.');
-      } else {
-        localStorage.removeItem('ba_monday_key');
-        sessionStorage.removeItem('ba_monday_key');
-        alert('Monday.com token removed.');
-      }
-    }
-  } else if (a === 'proxy') {
-    const url = prompt('Paste your Cloudflare Worker proxy URL:\n(e.g. https://monday-proxy.your-name.workers.dev)', mondayProxy || '');
-    if (url !== null) {
-      mondayProxy = url.trim();
-      if (mondayProxy) {
-        localStorage.setItem('ba_monday_proxy', mondayProxy);
-        alert('Monday proxy URL saved.');
-      } else {
-        localStorage.removeItem('ba_monday_proxy');
-        alert('Monday proxy URL removed.');
-      }
-    }
-  } else if (a === 'clear') {
-    localStorage.removeItem('ba_key');
-    sessionStorage.removeItem('ba_key');
-    localStorage.removeItem('ba_monday_key');
-    sessionStorage.removeItem('ba_monday_key');
-    localStorage.removeItem('ba_monday_proxy');
-    mondayKey = '';
-    mondayProxy = '';
-    alert('All saved keys and settings cleared from this browser.');
-  } else if (a === 'team' || a === 'regenerate') {
-    const key = prompt('Paste the API key to embed in the team file:');
-    if (key && key.startsWith('sk-')) {
-      document.getElementById('apiKeyInput').value = key;
-      generateTeamFile();
-    }
+  if (a === 'clear') {
+    localStorage.removeItem('ba_history');
+    alert('Brief history cleared.');
   }
 }
 
@@ -1446,33 +1260,19 @@ document.getElementById('pasteArea').addEventListener('input', function() {
   document.getElementById('analyzeBtn').disabled = !this.value.trim();
 });
 
-document.getElementById('apiKeyInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') saveKey();
-});
-
 // ─── Monday.com Integration ─────────────────────────────
 
-// Monday.com's API doesn't support CORS from browser files,
-// so we route through your own Cloudflare Worker proxy.
+// Monday.com API calls routed through Vercel serverless function
 async function mondayFetch(query) {
-  if (!mondayProxy) {
-    throw new Error('No Monday Proxy URL set. Go to settings (gear icon) → type "proxy" to set your Cloudflare Worker URL.\n\nSee the monday-proxy-worker.js file for 2-minute setup instructions.');
-  }
-
-  const url = mondayProxy.replace(/\/+$/, ''); // trim trailing slashes
-  const res = await fetch(url, {
+  const res = await fetch('/api/monday', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': mondayKey,
-      'API-Version': '2024-10'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query })
   });
 
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error('Proxy returned ' + res.status + ': ' + text);
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || 'Monday API error ' + res.status);
   }
 
   return await res.json();
@@ -1482,20 +1282,6 @@ let _mondayExporting = false;
 async function exportToMonday() {
   if (_mondayExporting) return;
   _mondayExporting = true;
-  if (!mondayKey) {
-    const token = prompt('Enter your Monday.com API token:\nGet it from monday.com/developers → Personal API Token.\n\nThis will be saved so you only need to do it once:');
-    if (!token || !token.trim()) return;
-    mondayKey = token.trim();
-    localStorage.setItem('ba_monday_key', mondayKey);
-    sessionStorage.setItem('ba_monday_key', mondayKey);
-  }
-  if (!mondayProxy) {
-    const url = prompt('Enter your Monday Proxy URL:\n(Your Cloudflare Worker — see monday-proxy-worker.js for 2-min setup)\n\nThis will be saved so you only need to do it once:');
-    if (!url || !url.trim()) return;
-    mondayProxy = url.trim();
-    localStorage.setItem('ba_monday_proxy', mondayProxy);
-  }
-
   const btn = document.getElementById('mondayBtn');
   const originalText = btn.innerHTML;
   btn.textContent = 'Exporting...';
