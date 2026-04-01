@@ -1288,6 +1288,8 @@ async function mondayFetch(query) {
 }
 
 let _mondayExporting = false;
+function getMondayExportLog() { try { return JSON.parse(localStorage.getItem('ba_monday_exports') || '{}'); } catch { return {}; } }
+
 async function exportToMonday() {
   if (_mondayExporting) return;
   _mondayExporting = true;
@@ -1303,6 +1305,20 @@ async function exportToMonday() {
       const campaign = (data.campaignName || 'Brief').toUpperCase().replace(/\s+/g, '-');
       return `${brand}_${campaign}`;
     })();
+
+    // ═══════════════════════════════════════════════════════
+    // LOCAL DEDUP: Check if this brief was already exported
+    // ═══════════════════════════════════════════════════════
+    const exportLog = getMondayExportLog();
+    const exportKey = currentHistoryId ? String(currentHistoryId) : itemName;
+    if (exportLog[exportKey]) {
+      btn.innerHTML = 'Already exported';
+      btn.style.background = '#d97706';
+      btn.style.color = '#fff';
+      btn.style.borderColor = '#d97706';
+      setTimeout(() => { btn.innerHTML = originalText; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; btn.disabled = false; _mondayExporting = false; }, 2500);
+      return;
+    }
 
     // ═══════════════════════════════════════════════════════
     // 1. Campaign Briefing Springboard (full detail)
@@ -1364,17 +1380,26 @@ async function exportToMonday() {
 
     // ═══════════════════════════════════════════════════════
     // 2. 2026 Pubity Group Campaign Overview (key info)
-    //    — Check for duplicates first
+    //    — Server-side dedup: search for existing items with same name
     // ═══════════════════════════════════════════════════════
-    const dupCheck = await mondayFetch(`{ boards(ids: ${MONDAY_OVERVIEW_BOARD_ID}) { items_page(limit: 50, query_params: { rules: [{ column_id: "name", compare_value: [${JSON.stringify(itemName)}] }] }) { items { id name } } } }`);
-    const existingItems = dupCheck?.data?.boards?.[0]?.items_page?.items || [];
-    if (existingItems.some(i => i.name === itemName)) {
-      btn.innerHTML = 'Already in Monday';
-      btn.style.background = '#d97706';
-      btn.style.color = '#fff';
-      btn.style.borderColor = '#d97706';
-      setTimeout(() => { btn.innerHTML = originalText; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; btn.disabled = false; _mondayExporting = false; }, 2500);
-      return;
+    try {
+      const searchQuery = `{ items_page_by_column_values(board_id: ${MONDAY_OVERVIEW_BOARD_ID}, limit: 5, columns: [{column_id: "name", column_values: [${JSON.stringify(itemName)}]}]) { items { id name } } }`;
+      const dupCheck = await mondayFetch(searchQuery);
+      const existingItems = dupCheck?.data?.items_page_by_column_values?.items || [];
+      if (existingItems.length > 0) {
+        // Mark as exported locally too
+        const expLog = getMondayExportLog();
+        expLog[exportKey] = { date: new Date().toISOString(), itemName };
+        try { localStorage.setItem('ba_monday_exports', JSON.stringify(expLog)); } catch {}
+        btn.innerHTML = 'Already in Monday';
+        btn.style.background = '#d97706';
+        btn.style.color = '#fff';
+        btn.style.borderColor = '#d97706';
+        setTimeout(() => { btn.innerHTML = originalText; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; btn.disabled = false; _mondayExporting = false; }, 2500);
+        return;
+      }
+    } catch (dupErr) {
+      console.warn('Dedup check failed, proceeding with export:', dupErr);
     }
 
     const overviewValues = {};
@@ -1442,8 +1467,11 @@ async function exportToMonday() {
     }
 
     // ═══════════════════════════════════════════════════════
-    // Success — both boards updated. Save final state to history.
+    // Success — both boards updated. Log export to prevent duplicates.
     // ═══════════════════════════════════════════════════════
+    const successLog = getMondayExportLog();
+    successLog[exportKey] = { date: new Date().toISOString(), itemName };
+    try { localStorage.setItem('ba_monday_exports', JSON.stringify(successLog)); } catch {}
     saveToHistory();
     btn.innerHTML = 'Exported!';
     btn.style.background = '#10b981';
