@@ -347,6 +347,10 @@
             </select>
           </div>
           <div class="field-card">
+            <div class="field-label">Response Due Date</div>
+            <input type="date" class="field-select" id="manualResponseDue" onchange="updateManual()" style="font-family:inherit;">
+          </div>
+          <div class="field-card">
             <div class="field-label">Type of Campaign</div>
             <select class="field-select" id="manualCampaignType" onchange="updateManual()">
               <option value="">Select...</option>
@@ -664,7 +668,7 @@ function processAnalysis(result) {
 // ─── Rendering ──────────────────────────────────────────
 
 // Manual field state
-let manualData = { salesLead: '', briefName: '', proactiveInbound: '', briefSource: '', campaignType: '', briefTypes: [], additionalContext: '' };
+let manualData = { salesLead: '', briefName: '', proactiveInbound: '', briefSource: '', responseDue: '', campaignType: '', briefTypes: [], additionalContext: '' };
 let currentHistoryId = null; // Tracks the current brief's history entry for auto-save
 
 const BRIEF_TYPE_OPTIONS = ['Awareness', 'Cultural-Clout', 'Perception', 'Consideration', 'Conversion', 'Visibility'];
@@ -718,6 +722,7 @@ function updateManual() {
   manualData.briefName = document.getElementById('manualBriefName').value;
   manualData.proactiveInbound = document.getElementById('manualProactiveInbound').value;
   manualData.briefSource = document.getElementById('manualBriefSource').value;
+  manualData.responseDue = document.getElementById('manualResponseDue').value;
   manualData.campaignType = document.getElementById('manualCampaignType').value;
   manualData.additionalContext = document.getElementById('manualAdditionalContext').value;
   // Auto-save to history
@@ -1040,13 +1045,17 @@ function exportPDF() {
   }
 
   // ─── YOUR DETAILS (manual fields) ───
-  const hasMD = manualData.salesLead || manualData.proactiveInbound || manualData.campaignType || manualData.briefTypes.length > 0 || manualData.additionalContext;
+  const hasMD = manualData.salesLead || manualData.proactiveInbound || manualData.campaignType || manualData.briefTypes.length > 0 || manualData.additionalContext || manualData.responseDue;
   if (hasMD) {
     drawSectionHeader('Your Details');
     drawField('Sales Lead', manualData.salesLead);
     drawField('Brief Name', manualData.briefName);
     drawField('Proactive or Inbound', manualData.proactiveInbound);
     drawField('Brief Source', manualData.briefSource);
+    if (manualData.responseDue) {
+      const rd = new Date(manualData.responseDue);
+      drawField('Response Due Date', rd.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
+    }
     drawField('Type of Campaign', manualData.campaignType);
     if (manualData.briefTypes.length > 0) drawField('Brief Type', manualData.briefTypes.join(', '));
     drawField('Additional Context', manualData.additionalContext);
@@ -1233,7 +1242,7 @@ function resetAll() {
   document.getElementById('rawTextBox').style.display = 'none';
   document.getElementById('rawToggle').textContent = 'Show raw text';
   // Clear manual fields
-  ['manualSalesLead','manualBriefName','manualAdditionalContext','manualProactiveInbound','manualBriefSource','manualCampaignType'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  ['manualSalesLead','manualBriefName','manualAdditionalContext','manualProactiveInbound','manualBriefSource','manualResponseDue','manualCampaignType'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   clearError();
   switchTab('analysis');
   showState('upload');
@@ -1474,6 +1483,8 @@ function saveToHistory() {
   if (pi) manualData.proactiveInbound = pi.value;
   const bs = document.getElementById('manualBriefSource');
   if (bs) manualData.briefSource = bs.value;
+  const rd = document.getElementById('manualResponseDue');
+  if (rd) manualData.responseDue = rd.value;
   const ct = document.getElementById('manualCampaignType');
   if (ct) manualData.campaignType = ct.value;
   const ac = document.getElementById('manualAdditionalContext');
@@ -1581,6 +1592,7 @@ function loadFromHistory(id) {
   const bn = document.getElementById('manualBriefName'); if (bn) bn.value = manualData.briefName || '';
   const pi = document.getElementById('manualProactiveInbound'); if (pi) pi.value = manualData.proactiveInbound || '';
   const bsrc = document.getElementById('manualBriefSource'); if (bsrc) bsrc.value = manualData.briefSource || '';
+  const rdue = document.getElementById('manualResponseDue'); if (rdue) rdue.value = manualData.responseDue || '';
   const ct = document.getElementById('manualCampaignType'); if (ct) ct.value = manualData.campaignType || '';
   const ac = document.getElementById('manualAdditionalContext'); if (ac) ac.value = manualData.additionalContext || '';
   renderBriefTypePills();
