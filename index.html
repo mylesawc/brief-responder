@@ -1288,63 +1288,39 @@ async function mondayFetch(query) {
 }
 
 let _mondayExporting = false;
-function getMondayExportLog() { try { return JSON.parse(localStorage.getItem('ba_monday_exports') || '{}'); } catch { return {}; } }
 
 async function exportToMonday() {
   if (_mondayExporting) return;
   _mondayExporting = true;
+
   const btn = document.getElementById('mondayBtn');
   const originalText = btn.innerHTML;
   btn.textContent = 'Exporting...';
   btn.disabled = true;
+  btn.onclick = null;
 
   try {
-    // Use manual brief name or auto-generate
     const itemName = manualData.briefName || (() => {
       const brand = (data.brandName || 'Unknown').toUpperCase().replace(/\s+/g, '-');
       const campaign = (data.campaignName || 'Brief').toUpperCase().replace(/\s+/g, '-');
       return `${brand}_${campaign}`;
     })();
 
-    // ═══════════════════════════════════════════════════════
-    // LOCAL DEDUP: Check if this brief was already exported
-    // ═══════════════════════════════════════════════════════
-    const exportLog = getMondayExportLog();
-    const exportKey = currentHistoryId ? String(currentHistoryId) : itemName;
-    if (exportLog[exportKey]) {
-      btn.innerHTML = 'Already exported';
-      btn.style.background = '#d97706';
-      btn.style.color = '#fff';
-      btn.style.borderColor = '#d97706';
-      setTimeout(() => { btn.innerHTML = originalText; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; btn.disabled = false; _mondayExporting = false; }, 2500);
-      return;
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // 1. Campaign Briefing Springboard (full detail)
-    // ═══════════════════════════════════════════════════════
+    // ── Build Springboard column values ──
     const springboardValues = {};
-
     if (manualData.proactiveInbound) springboardValues['text_mknt8cn6'] = manualData.proactiveInbound;
-
     if (manualData.campaignType) {
       const campaignTypeMap = { 'Amplification': 1, 'Integrated Editorial': 0, 'Bespoke': 2, 'Hybrid or Whatever works best': 3 };
       const typeId = campaignTypeMap[manualData.campaignType];
       if (typeId !== undefined) springboardValues['dropdown_mknt6qct'] = { ids: [typeId] };
     }
-
     if (manualData.briefTypes.length > 0) {
       const briefTypeMap = { 'Awareness': 1, 'Cultural-Clout': 0, 'Perception': 2, 'Consideration': 3, 'Conversion': 4, 'Visibility': 5 };
       const ids = manualData.briefTypes.map(t => briefTypeMap[t]).filter(id => id !== undefined);
       if (ids.length > 0) springboardValues['dropdown_mkrb6fba'] = { ids: ids };
     }
-
-    // Sales Person on Springboard
     const springboardSellerId = SELLER_USER_IDS[manualData.salesLead];
-    if (springboardSellerId) {
-      springboardValues['peoplelwlkw7df'] = { personsAndTeams: [{ id: springboardSellerId, kind: 'person' }] };
-    }
-
+    if (springboardSellerId) springboardValues['peoplelwlkw7df'] = { personsAndTeams: [{ id: springboardSellerId, kind: 'person' }] };
     if (data.brandName) springboardValues['short_text__1'] = data.brandName;
     if (data.campaignName) springboardValues['short_text2__1'] = data.campaignName;
     if (data.businessChallenge) springboardValues['long_text__1'] = { text: data.businessChallenge };
@@ -1353,72 +1329,22 @@ async function exportToMonday() {
     if (data.targetAudience) springboardValues['long_text5__1'] = { text: data.targetAudience };
     if (data.deliverables) springboardValues['long_text3__1'] = { text: data.deliverables };
     if (data.kpis) springboardValues['long_text8__1'] = { text: data.kpis };
-    if (data.dealValue) {
-      const num = parseFloat(data.dealValue.replace(/[^0-9.]/g, ''));
-      if (!isNaN(num)) springboardValues['number__1'] = num;
-    }
+    if (data.dealValue) { const num = parseFloat(data.dealValue.replace(/[^0-9.]/g, '')); if (!isNaN(num)) springboardValues['number__1'] = num; }
     if (data.keyDates) springboardValues['long_text50__1'] = { text: data.keyDates };
     if (data.goodLooksLike) springboardValues['long_text_mknt6etw'] = { text: data.goodLooksLike };
     if (data.whatWillWin) springboardValues['long_text_mknthxea'] = { text: data.whatWillWin };
 
-    const springboardMutation = `mutation {
-      create_item(
-        board_id: ${MONDAY_BOARD_ID},
-        group_id: "topics",
-        item_name: ${JSON.stringify(itemName)},
-        column_values: ${JSON.stringify(JSON.stringify(springboardValues))}
-      ) { id }
-    }`;
-
-    const springboardResult = await mondayFetch(springboardMutation);
-    if (springboardResult.errors?.length > 0) {
-      throw new Error('Springboard: ' + (springboardResult.errors[0].message || 'API error'));
-    }
-    if (!springboardResult.data?.create_item?.id) {
-      throw new Error('Springboard: Unexpected response');
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // 2. 2026 Pubity Group Campaign Overview (key info)
-    //    — Server-side dedup: search for existing items with same name
-    // ═══════════════════════════════════════════════════════
-    try {
-      const searchQuery = `{ items_page_by_column_values(board_id: ${MONDAY_OVERVIEW_BOARD_ID}, limit: 5, columns: [{column_id: "name", column_values: [${JSON.stringify(itemName)}]}]) { items { id name } } }`;
-      const dupCheck = await mondayFetch(searchQuery);
-      const existingItems = dupCheck?.data?.items_page_by_column_values?.items || [];
-      if (existingItems.length > 0) {
-        // Mark as exported locally too
-        const expLog = getMondayExportLog();
-        expLog[exportKey] = { date: new Date().toISOString(), itemName };
-        try { localStorage.setItem('ba_monday_exports', JSON.stringify(expLog)); } catch {}
-        btn.innerHTML = 'Already in Monday';
-        btn.style.background = '#d97706';
-        btn.style.color = '#fff';
-        btn.style.borderColor = '#d97706';
-        setTimeout(() => { btn.innerHTML = originalText; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = ''; btn.disabled = false; _mondayExporting = false; }, 2500);
-        return;
-      }
-    } catch (dupErr) {
-      console.warn('Dedup check failed, proceeding with export:', dupErr);
-    }
-
+    // ── Build Overview column values ──
     const overviewValues = {};
-
     const sellerUserId = SELLER_USER_IDS[manualData.salesLead];
-    if (sellerUserId) {
-      overviewValues['multiple_person_mksvy0tm'] = { personsAndTeams: [{ id: sellerUserId, kind: 'person' }] };
-    }
-
+    if (sellerUserId) overviewValues['multiple_person_mksvy0tm'] = { personsAndTeams: [{ id: sellerUserId, kind: 'person' }] };
     const kpiNotes = [data.kpis, data.deliverables].filter(Boolean).join('\n\n');
     if (kpiNotes) overviewValues['text8__1'] = kpiNotes;
-
-    // Campaign Live Dates (timeline) — try to parse from flight dates
     if (data.flightDates) {
       const dateMatch = data.flightDates.match(/(\d{4}-\d{2}-\d{2})/g);
       if (dateMatch && dateMatch.length >= 2) {
         overviewValues['first_live_date__1'] = { from: dateMatch[0], to: dateMatch[1] };
       } else {
-        // Try parsing common formats like "1 June - 30 June 2026"
         const parts = data.flightDates.split(/[-–—to]+/i).map(s => s.trim());
         if (parts.length >= 2) {
           const tryParse = (s) => { const d = new Date(s); return isNaN(d) ? null : d.toISOString().slice(0, 10); };
@@ -1428,7 +1354,6 @@ async function exportToMonday() {
         }
       }
     }
-
     const notesText = [
       data.dealValue ? `Deal Value: ${data.dealValue}` : '',
       data.businessChallenge ? `Business Challenge: ${data.businessChallenge}` : '',
@@ -1438,19 +1363,26 @@ async function exportToMonday() {
       manualData.additionalContext ? `Additional Context: ${manualData.additionalContext}` : ''
     ].filter(Boolean).join('\n\n');
     if (notesText) overviewValues['text_mkw3am4s'] = notesText;
-
     if (manualData.briefSource) overviewValues['text9__1'] = manualData.briefSource;
     else if (manualData.proactiveInbound) overviewValues['text9__1'] = manualData.proactiveInbound;
-
-    // Deal Type → deal_type__1 (status: 2=Amplification, 0=Integrated Editorial, 1=Bespoke)
     if (manualData.campaignType) {
       const dealTypeMap = { 'Amplification': 'Amplification', 'Integrated Editorial': 'Integrated Editorial', 'Bespoke': 'Bespoke', 'Hybrid or Whatever works best': 'Other' };
       const label = dealTypeMap[manualData.campaignType];
       if (label) overviewValues['deal_type__1'] = { label };
     }
 
-    const overviewMutation = `mutation {
-      create_item(
+    // ═══════════════════════════════════════════════════════
+    // SINGLE API CALL — both boards in one GraphQL mutation
+    // This makes duplication impossible.
+    // ═══════════════════════════════════════════════════════
+    const combinedMutation = `mutation {
+      springboard: create_item(
+        board_id: ${MONDAY_BOARD_ID},
+        group_id: "topics",
+        item_name: ${JSON.stringify(itemName)},
+        column_values: ${JSON.stringify(JSON.stringify(springboardValues))}
+      ) { id }
+      overview: create_item(
         board_id: ${MONDAY_OVERVIEW_BOARD_ID},
         group_id: "group_mkvm63bj",
         item_name: ${JSON.stringify(itemName)},
@@ -1458,38 +1390,33 @@ async function exportToMonday() {
       ) { id }
     }`;
 
-    const overviewResult = await mondayFetch(overviewMutation);
-    if (overviewResult.errors?.length > 0) {
-      throw new Error('Overview: ' + (overviewResult.errors[0].message || 'API error'));
+    const result = await mondayFetch(combinedMutation);
+    if (result.errors?.length > 0) {
+      throw new Error('Monday: ' + (result.errors[0].message || 'API error'));
     }
-    if (!overviewResult.data?.create_item?.id) {
-      throw new Error('Overview: Unexpected response');
+    if (!result.data?.springboard?.id) {
+      throw new Error('Springboard item was not created');
+    }
+    if (!result.data?.overview?.id) {
+      throw new Error('Overview item was not created');
     }
 
     // ═══════════════════════════════════════════════════════
-    // Success — both boards updated. Log export to prevent duplicates.
+    // Success
     // ═══════════════════════════════════════════════════════
-    const successLog = getMondayExportLog();
-    successLog[exportKey] = { date: new Date().toISOString(), itemName };
-    try { localStorage.setItem('ba_monday_exports', JSON.stringify(successLog)); } catch {}
     saveToHistory();
     btn.innerHTML = 'Exported!';
-    btn.style.background = '#10b981';
-    btn.style.color = '#fff';
-    btn.style.borderColor = '#10b981';
+    btn.style.background = '#10b981'; btn.style.color = '#fff'; btn.style.borderColor = '#10b981';
     setTimeout(() => {
-      btn.innerHTML = originalText;
-      btn.style.background = '';
-      btn.style.color = '';
-      btn.style.borderColor = '';
-      btn.disabled = false;
-      _mondayExporting = false;
+      btn.innerHTML = originalText; btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = '';
+      btn.disabled = false; btn.onclick = exportToMonday; _mondayExporting = false;
     }, 2500);
 
   } catch (err) {
     alert('Failed to export to Monday: ' + err.message);
     btn.innerHTML = originalText;
     btn.disabled = false;
+    btn.onclick = exportToMonday;
     _mondayExporting = false;
   }
 }
