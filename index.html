@@ -411,7 +411,8 @@ let currentFileName = "";
 let analysisResult = null;
 
 const MONDAY_BOARD_ID = 1828053644; // Campaign Briefing Springboard
-const MONDAY_OVERVIEW_BOARD_ID = 5089619640; // 2026 Pubity Group Campaign Overview
+// Overview board managed by Monday automation — no direct create needed
+// const MONDAY_OVERVIEW_BOARD_ID = 5089619640;
 
 // Seller name → Monday.com user ID mapping
 const SELLER_USER_IDS = {
@@ -1334,71 +1335,27 @@ async function exportToMonday() {
     if (data.goodLooksLike) springboardValues['long_text_mknt6etw'] = { text: data.goodLooksLike };
     if (data.whatWillWin) springboardValues['long_text_mknthxea'] = { text: data.whatWillWin };
 
-    // ── Build Overview column values ──
-    const overviewValues = {};
-    const sellerUserId = SELLER_USER_IDS[manualData.salesLead];
-    if (sellerUserId) overviewValues['multiple_person_mksvy0tm'] = { personsAndTeams: [{ id: sellerUserId, kind: 'person' }] };
-    const kpiNotes = [data.kpis, data.deliverables].filter(Boolean).join('\n\n');
-    if (kpiNotes) overviewValues['text8__1'] = kpiNotes;
-    if (data.flightDates) {
-      const dateMatch = data.flightDates.match(/(\d{4}-\d{2}-\d{2})/g);
-      if (dateMatch && dateMatch.length >= 2) {
-        overviewValues['first_live_date__1'] = { from: dateMatch[0], to: dateMatch[1] };
-      } else {
-        const parts = data.flightDates.split(/[-–—to]+/i).map(s => s.trim());
-        if (parts.length >= 2) {
-          const tryParse = (s) => { const d = new Date(s); return isNaN(d) ? null : d.toISOString().slice(0, 10); };
-          const from = tryParse(parts[0]);
-          const to = tryParse(parts[parts.length - 1]);
-          if (from && to) overviewValues['first_live_date__1'] = { from, to };
-        }
-      }
-    }
-    const notesText = [
-      data.dealValue ? `Deal Value: ${data.dealValue}` : '',
-      data.businessChallenge ? `Business Challenge: ${data.businessChallenge}` : '',
-      data.marketingObjective ? `Marketing Objective: ${data.marketingObjective}` : '',
-      data.targetAudience ? `Target Audience: ${data.targetAudience}` : '',
-      data.flightDates ? `Flight Dates: ${data.flightDates}` : '',
-      manualData.additionalContext ? `Additional Context: ${manualData.additionalContext}` : ''
-    ].filter(Boolean).join('\n\n');
-    if (notesText) overviewValues['text_mkw3am4s'] = notesText;
-    if (manualData.briefSource) overviewValues['text9__1'] = manualData.briefSource;
-    else if (manualData.proactiveInbound) overviewValues['text9__1'] = manualData.proactiveInbound;
-    if (manualData.campaignType) {
-      const dealTypeMap = { 'Amplification': 'Amplification', 'Integrated Editorial': 'Integrated Editorial', 'Bespoke': 'Bespoke', 'Hybrid or Whatever works best': 'Other' };
-      const label = dealTypeMap[manualData.campaignType];
-      if (label) overviewValues['deal_type__1'] = { label };
-    }
-
     // ═══════════════════════════════════════════════════════
-    // SINGLE API CALL — both boards in one GraphQL mutation
-    // This makes duplication impossible.
+    // Create Springboard item ONLY.
+    // The Overview board has a Monday automation that
+    // auto-creates a matching item when a Springboard item
+    // is added — so we do NOT create on Overview ourselves.
     // ═══════════════════════════════════════════════════════
-    const combinedMutation = `mutation {
-      springboard: create_item(
+    const mutation = `mutation {
+      create_item(
         board_id: ${MONDAY_BOARD_ID},
         group_id: "topics",
         item_name: ${JSON.stringify(itemName)},
         column_values: ${JSON.stringify(JSON.stringify(springboardValues))}
       ) { id }
-      overview: create_item(
-        board_id: ${MONDAY_OVERVIEW_BOARD_ID},
-        group_id: "group_mkvm63bj",
-        item_name: ${JSON.stringify(itemName)},
-        column_values: ${JSON.stringify(JSON.stringify(overviewValues))}
-      ) { id }
     }`;
 
-    const result = await mondayFetch(combinedMutation);
+    const result = await mondayFetch(mutation);
     if (result.errors?.length > 0) {
       throw new Error('Monday: ' + (result.errors[0].message || 'API error'));
     }
-    if (!result.data?.springboard?.id) {
+    if (!result.data?.create_item?.id) {
       throw new Error('Springboard item was not created');
-    }
-    if (!result.data?.overview?.id) {
-      throw new Error('Overview item was not created');
     }
 
     // ═══════════════════════════════════════════════════════
