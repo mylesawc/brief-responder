@@ -170,6 +170,24 @@
   .toolbar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
   .raw-text-box { background: #fff; border: 1px solid var(--g200); border-radius: 10px; padding: 16px; margin-bottom: 16px; max-height: 280px; overflow: auto; font-size: 12px; color: var(--g700); line-height: 1.7; white-space: pre-wrap; }
 
+  /* Login */
+  .login-screen { max-width: 420px; margin: 80px auto; text-align: center; }
+  .login-card { background: #fff; border: 1px solid var(--g200); border-radius: 16px; padding: 36px 32px; box-shadow: 0 4px 24px rgba(0,0,0,0.06); }
+  .login-logo { height: 32px; margin-bottom: 20px; }
+  .login-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; color: var(--g900); }
+  .login-card p { font-size: 13px; color: var(--g500); margin-bottom: 24px; }
+  .login-field { width: 100%; padding: 11px 14px; border: 1px solid var(--g200); border-radius: 9px; font-size: 13px; font-family: inherit; background: #fff; margin-bottom: 12px; }
+  .login-field:focus { outline: none; border-color: #FFEB00; }
+  .login-field::placeholder { color: var(--g400); }
+  .login-error { font-size: 12px; color: var(--red); margin-bottom: 12px; display: none; }
+  .login-btn { width: 100%; padding: 12px; font-size: 14px; font-weight: 700; border-radius: 10px; border: none; cursor: pointer; background: #FFEB00; color: #222; transition: background 0.15s; }
+  .login-btn:hover { background: #d7c300; }
+  .login-btn:disabled { opacity: 0.5; cursor: default; }
+  .login-domain { font-size: 11px; color: var(--g400); margin-top: 14px; }
+  .user-badge { font-size: 12px; color: #9ca3af; margin-right: 8px; }
+  .logout-btn { background: transparent; border: 1px solid #3B3B3B; color: #9ca3af; font-size: 11px; padding: 4px 10px; border-radius: 6px; cursor: pointer; }
+  .logout-btn:hover { border-color: #ffe066; color: #fff; }
+
   /* History */
   .history-section { margin-top: 32px; }
   .history-section h3 { font-size: 15px; font-weight: 700; color: var(--g700); margin-bottom: 12px; }
@@ -242,11 +260,29 @@
     <button class="btn" id="mondayBtn" onclick="exportToMonday()" style="padding:10px 22px; font-size:13px; font-weight:700; gap:8px; background:#fff; color:#222; border:2px solid #ff3d57; border-radius:8px;"><svg width="20" height="20" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;"><path d="M8.4 46.8c-3.1 0-5.7-1.6-7.2-4.2-1.5-2.6-1.5-5.8 0-8.4L12.6 14c1.5-2.6 4.1-4.2 7.2-4.2 3.1 0 5.7 1.6 7.2 4.2 1.5 2.6 1.5 5.8 0 8.4L15.6 42.6c-1.5 2.6-4.1 4.2-7.2 4.2z" fill="#ff3d57"/><path d="M24.8 54.2c-3.1 0-5.7-1.6-7.2-4.2-1.5-2.6-1.5-5.8 0-8.4l11.4-19.8c1.5-2.6 4.1-4.2 7.2-4.2 3.1 0 5.7 1.6 7.2 4.2 1.5 2.6 1.5 5.8 0 8.4L32 50c-1.5 2.6-4.1 4.2-7.2 4.2z" fill="#ffcb00"/><path d="M41.2 46.8c-3.1 0-5.7-1.6-7.2-4.2-1.5-2.6-1.5-5.8 0-8.4L45.4 14c1.5-2.6 4.1-4.2 7.2-4.2 3.1 0 5.7 1.6 7.2 4.2 1.5 2.6 1.5 5.8 0 8.4L48.4 42.6c-1.5 2.6-4.1 4.2-7.2 4.2z" fill="#00d647"/></svg>Export to Monday</button>
   </div>
   <div class="header-actions" id="headerSettings">
+    <span class="user-badge" id="userBadge"></span>
+    <button class="logout-btn" id="logoutBtn" onclick="logout()" style="display:none;">Sign out</button>
     <button class="btn btn-outline" onclick="showKeySettings()" title="API key settings" style="font-size:14px; padding:6px 10px; color:#fff; border-color:#3B3B3B;">&#9881;</button>
   </div>
 </div>
 
 <div class="container">
+  <!-- LOGIN STATE -->
+  <div id="loginState" style="display:none;">
+    <div class="login-screen">
+      <div class="login-card">
+        <img src="https://framerusercontent.com/images/XXDKLuMsddarkzSi0AGzpc12J0.svg" alt="Pubity" class="login-logo">
+        <h2>Brief Analyzer</h2>
+        <p>Sign in with your Pubity Group email to continue</p>
+        <div class="login-error" id="loginError"></div>
+        <input type="email" class="login-field" id="loginEmail" placeholder="you@pubitygroup.com" autocomplete="email">
+        <input type="password" class="login-field" id="loginPassword" placeholder="Password" autocomplete="current-password">
+        <button class="login-btn" id="loginBtn" onclick="handleLogin()">Sign In</button>
+        <div class="login-domain">Restricted to @pubitygroup.com accounts</div>
+      </div>
+    </div>
+  </div>
+
   <!-- KEY STATE (hidden — server-side keys) -->
   <div id="keyState" style="display:none;"></div>
 
@@ -430,8 +466,89 @@ const SELLER_USER_IDS = {
 // ─── API Key ────────────────────────────────────────────
 
 function init() {
-  // Server-side keys — go straight to upload
-  showState('upload');
+  // Check for existing auth session
+  const session = sessionStorage.getItem('ba_session');
+  if (session) {
+    try {
+      const { email, token } = JSON.parse(session);
+      if (email && token) {
+        setLoggedIn(email);
+        showState('upload');
+        return;
+      }
+    } catch (e) { /* invalid session, show login */ }
+  }
+  showState('login');
+}
+
+async function handleLogin() {
+  const emailEl = document.getElementById('loginEmail');
+  const passEl = document.getElementById('loginPassword');
+  const errEl = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  const email = emailEl.value.trim();
+  const password = passEl.value;
+
+  errEl.style.display = 'none';
+
+  if (!email || !password) {
+    errEl.textContent = 'Please enter your email and password.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  if (!email.toLowerCase().endsWith('@pubitygroup.com')) {
+    errEl.textContent = 'Please use your @pubitygroup.com email address.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+
+  try {
+    const resp = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const result = await resp.json();
+
+    if (!resp.ok) {
+      errEl.textContent = result.error || 'Sign in failed. Please try again.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      return;
+    }
+
+    // Store session
+    sessionStorage.setItem('ba_session', JSON.stringify({ email: result.email, token: result.token }));
+    setLoggedIn(result.email);
+    showState('upload');
+
+  } catch (err) {
+    errEl.textContent = 'Connection error. Please try again.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+}
+
+function setLoggedIn(email) {
+  const name = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  document.getElementById('userBadge').textContent = name;
+  document.getElementById('logoutBtn').style.display = 'inline-block';
+}
+
+function logout() {
+  sessionStorage.removeItem('ba_session');
+  document.getElementById('userBadge').textContent = '';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginError').style.display = 'none';
+  showState('login');
 }
 
 
@@ -1252,10 +1369,10 @@ function resetAll() {
 // ─── Utilities ──────────────────────────────────────────
 
 function showState(s) {
-  ['keyState','uploadState','processingState','resultsState'].forEach(id => {
+  ['loginState','keyState','uploadState','processingState','resultsState'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
-  const map = { key: 'keyState', upload: 'uploadState', processing: 'processingState', results: 'resultsState' };
+  const map = { login: 'loginState', key: 'keyState', upload: 'uploadState', processing: 'processingState', results: 'resultsState' };
   if (map[s]) document.getElementById(map[s]).style.display = 'block';
   if (s === 'upload') { const cb = document.getElementById('prevBriefCount'); if (cb) cb.textContent = getHistory().length; }
 }
@@ -1725,6 +1842,10 @@ function toggleBrand(header) {
   expandable.style.display = isOpen ? 'none' : 'block';
   header.classList.toggle('expanded', !isOpen);
 }
+
+// Enter key on login fields
+document.getElementById('loginEmail').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPassword').focus(); });
+document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
 
 // Init
 init();
